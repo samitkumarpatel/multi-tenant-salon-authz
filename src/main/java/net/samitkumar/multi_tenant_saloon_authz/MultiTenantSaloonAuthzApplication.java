@@ -4,106 +4,112 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.ThrowingCustomizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.registry.ImportHttpServices;
-import org.springframework.web.servlet.function.RouterFunction;
-import org.springframework.web.servlet.function.RouterFunctions;
-import org.springframework.web.servlet.function.ServerResponse;
 
 import java.util.Collection;
 import java.util.List;
 
 @SpringBootApplication
 @EnableWebSecurity
-@ImportHttpServices(JsonPlaceHolderClient.class)
+@ImportHttpServices(value = SaloonUserClient.class, group = "saloon")
 public class MultiTenantSaloonAuthzApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(MultiTenantSaloonAuthzApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(MultiTenantSaloonAuthzApplication.class, args);
+    }
 
-	@Bean
-	RouterFunction<ServerResponse> routerFunction() {
-		return RouterFunctions.route().GET("/", request -> ServerResponse.accepted().body("Hello, World!")).build();
-	}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+            .formLogin(AbstractHttpConfigurer::disable)
+            .oneTimeTokenLogin(ott -> ott
+                .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
+                    // TODO: replace with real email delivery (SES / SMTP)
+                    IO.println("### OTT link: /login/ott?token=" + oneTimeToken.getTokenValue());
+                    response.sendRedirect("/login/ott");
+                })
+            )
+            .oauth2AuthorizationServer(authorizationServer ->
+                authorizationServer.oidc(Customizer.withDefaults())
+            );
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-		http
-			.authorizeHttpRequests((authorize) -> authorize.anyRequest().authenticated())
-			.formLogin(AbstractHttpConfigurer::disable)
-			.oneTimeTokenLogin(ott -> ott
-					.tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
-						//Implement the email sending logic here
-						IO.println("### OTT Token: " + oneTimeToken.getTokenValue());
-						response.sendRedirect("/login/ott");
-					})
-			)
-			.oauth2AuthorizationServer((authorizationServer) ->
-				authorizationServer.oidc(Customizer.withDefaults())	// Enable OpenID Connect 1.0
-			);
+        return http.build();
+    }
 
-		return http.build();
-	}
+    @Bean
+    UserDetailsService userDetailsService(SaloonUserClient saloonUserClient) {
+        return username -> saloonUserClient.getUserIdentities(username).getFirst();
+    }
 
-	@Bean
-	UserDetailsService  userDetailsService(JsonPlaceHolderClient  jsonPlaceHolderClient) {
-		return username -> jsonPlaceHolderClient.getUser(username).getFirst();
-	}
+    // Enriches the JWT access token with roles and saloon IDs derived from the view.
+    @Bean
+    OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
+        return context -> {
+            if (!context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) return;
+            if (!(context.getPrincipal().getPrincipal() instanceof SaloonUser user)) return;
 
+            context.getClaims()
+                    .claim("roles", user.role())
+                    .claim("saloon_ids", user.saloonId());
+        };
+    }
 }
 
-record JsonPlaceholderUser(String id, String username, String email) implements UserDetails {
-	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return List.of();
-	}
-
-	@Override
-	public @Nullable String getPassword() {
-		return "{noop}";
-	}
-
-	@Override
-	public String getUsername() {
-		return username;
-	}
-
-	@Override
-	public boolean isAccountNonExpired() {
-		return UserDetails.super.isAccountNonExpired();
-	}
-
-	@Override
-	public boolean isAccountNonLocked() {
-		return UserDetails.super.isAccountNonLocked();
-	}
-
-	@Override
-	public boolean isCredentialsNonExpired() {
-		return UserDetails.super.isCredentialsNonExpired();
-	}
-
-	@Override
-	public boolean isEnabled() {
-		return UserDetails.super.isEnabled();
-	}
+@HttpExchange(url = "")
+interface SaloonUserClient {
+    @GetExchange("/internal/user-identity")
+    List<SaloonUser> getUserIdentities(@RequestParam("email") String email);
 }
 
-@HttpExchange(url = "https://jsonplaceholder.typicode.com")
-interface JsonPlaceHolderClient {
-	@GetExchange("/users")
-	List<JsonPlaceholderUser> getUser(@RequestParam("username") String username);
-}
+record SaloonUser(String email, String role, String saloonId, Boolean active) implements UserDetails {
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(this::role);
+    }
 
+    @Override
+    public @Nullable String getPassword() {
+        return "";
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return UserDetails.super.isAccountNonExpired();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return UserDetails.super.isAccountNonLocked();
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return UserDetails.super.isCredentialsNonExpired();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return UserDetails.super.isEnabled();
+    }
+}

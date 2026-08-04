@@ -8,6 +8,15 @@ logging:
 spring:
   application:
     name: multi-tenant-saloon-authz
+  # Global, applies to all groups
+  http:
+    client:
+      service:
+        read-timeout: 2s
+        group:
+          saloon:
+            base-url: ${SALON_URL:http://localhost:8080}
+
   security:
     user:
       name: user
