@@ -3,7 +3,7 @@ server:
 
 logging:
   level:
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
 spring:
   application:
     name: multi-tenant-saloon-authz
