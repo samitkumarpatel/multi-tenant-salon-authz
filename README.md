@@ -40,6 +40,9 @@ const verifier = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().rep
 const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
 const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
 .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+console.log(`challenge: ${challenge}`);
+console.log(`verifier: ${verifier}`);
 ```
 
 **Java**
@@ -86,14 +89,12 @@ http://127.0.0.1:3000?code=<AUTH_CODE>
 ### Step 2 — Token Exchange (back-channel POST, no secret needed)
 
 ```shell
-POST http://localhost:9000/oauth2/token
-    Content-Type: application/x-www-form-urlencoded
-    
-    grant_type=authorization_code
-    &code=<AUTH_CODE>
-    &redirect_uri=http://127.0.0.1:3000
-    &client_id=public-client
-    &code_verifier=<original_plain_code_verifier>
+http --form POST http://localhost:9000/oauth2/token \
+  grant_type=authorization_code \
+  code=<AUTH_CODE> \
+  redirect_uri=http://127.0.0.1:3000 \
+  client_id=public-client \
+  code_verifier=<original_plain_code_verifier>
 ```
 
 Server verifies SHA256(code_verifier) == code_challenge from Step 1. Returns:
