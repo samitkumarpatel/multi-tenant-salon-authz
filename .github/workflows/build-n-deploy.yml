@@ -79,6 +79,7 @@ jobs:
           image: ${{ steps.build-image.outputs.image }}
           environment-variables: |
             IDENTITY_SERVICE_URL=https://api.my-saloon.online
+            BPL_JVM_THREAD_COUNT=50
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -87,4 +88,4 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-          wait-for-minutes: 5
+          wait-for-minutes: 10

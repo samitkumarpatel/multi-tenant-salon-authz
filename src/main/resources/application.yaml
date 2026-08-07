@@ -4,7 +4,6 @@ server:
 logging:
   level:
     org.springframework.security: DEBUG
-
 spring:
   application:
     name: multi-tenant-saloon-authz
@@ -48,5 +47,8 @@ spring:
                 - "openid"
                 - "profile"
             token:
-              access-token-time-to-live: 1h
-              refresh-token-time-to-live: 1d
+              access-token-time-to-live: 30m
+              refresh-token-time-to-live: 2h
+  threads:
+    virtual:
+      enabled: true
