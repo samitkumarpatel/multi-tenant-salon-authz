@@ -3,24 +3,17 @@ server:
 
 logging:
   level:
-    org.springframework.security: info
+    org.springframework.security: DEBUG
 
 spring:
   application:
     name: multi-tenant-saloon-authz
-  # Global, applies to all groups
-  http:
-    client:
-      service:
-        read-timeout: 2s
-        group:
-          saloon:
-            base-url: ${SALON_URL:http://localhost:8080}
-
+    identity-service-url: ${IDENTITY_SERVICE_URL:http://localhost:8080}
+    cors-allowed-origin-pattern: ${CORS_ALLOWED_ORIGIN_PATTERN:*}
   security:
-    user:
-      name: user
-      password: password
+#    user:
+#      name: user
+#      password: password
     oauth2:
       authorizationserver:
         client:
@@ -41,4 +34,19 @@ spring:
                 - "openid"
                 - "profile"
             require-authorization-consent: true
-
+          public-client:
+            registration:
+              client-id: "public-client"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+              redirect-uris:
+                - "http://127.0.0.1:3000"
+                - "http://localhost:3000"
+              scopes:
+                - "openid"
+                - "profile"
+            token:
+              access-token-time-to-live: 1h
+              refresh-token-time-to-live: 1d
