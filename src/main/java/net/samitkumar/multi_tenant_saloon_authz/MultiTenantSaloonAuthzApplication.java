@@ -42,7 +42,9 @@ public class MultiTenantSaloonAuthzApplication {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+            .authorizeHttpRequests(authorize -> authorize
+                    .requestMatchers("/actuator/**").permitAll()
+                    .anyRequest().authenticated())
             .formLogin(AbstractHttpConfigurer::disable)
             .oneTimeTokenLogin(ott -> ott
                 .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {

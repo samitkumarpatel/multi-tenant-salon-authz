@@ -80,6 +80,7 @@ jobs:
           environment-variables: |
             IDENTITY_SERVICE_URL=https://api.my-saloon.online
             BPL_JVM_THREAD_COUNT=50
+            server.port=8080
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
