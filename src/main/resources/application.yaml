@@ -4,11 +4,16 @@ server:
 logging:
   level:
     org.springframework.security: INFO
+
 spring:
   application:
     name: multi-tenant-saloon-authz
     identity-service-url: ${IDENTITY_SERVICE_URL:http://localhost:8080}
     cors-allowed-origin-pattern: ${CORS_ALLOWED_ORIGIN_PATTERN:*}
+    mailjet:
+      sender: "noreply@my-saloon.online"
+      api-key: ${MAILJET_API_KEY:asfa}
+      api-secret: ${MAILJET_API_SECRET:sfas}
   security:
 #    user:
 #      name: user
