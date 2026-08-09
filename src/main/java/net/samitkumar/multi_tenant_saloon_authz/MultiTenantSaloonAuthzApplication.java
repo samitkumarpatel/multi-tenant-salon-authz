@@ -281,7 +281,7 @@ record SaloonUser(String email, List<SaloonInfo> saloons) implements UserDetails
     @Override
     @JsonIgnore
     public @Nullable String getPassword() {
-        return "{noop}password";
+        return "";
     }
 
     @Override
