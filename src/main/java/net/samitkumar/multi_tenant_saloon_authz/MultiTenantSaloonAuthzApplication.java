@@ -2,7 +2,9 @@ package net.samitkumar.multi_tenant_saloon_authz;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -11,33 +13,26 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
-import org.springframework.http.MediaType;
+import org.springframework.security.authentication.ott.*;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
-import org.springframework.security.authentication.ott.OneTimeToken;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
-import org.springframework.security.web.authentication.ott.RedirectOneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
+import org.springframework.security.web.authentication.ott.RedirectOneTimeTokenGenerationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Controller;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
-import org.springframework.security.web.util.UrlUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -46,15 +41,21 @@ import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
 import org.springframework.web.service.registry.ImportHttpServices;
 import org.springframework.web.servlet.function.RouterFunction;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SpringBootApplication
 @ImportHttpServices(value = SaloonUserClient.class)
@@ -108,12 +109,13 @@ public class MultiTenantSaloonAuthzApplication {
     }
 }
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 @EnableWebSecurity
 class SecurityConfig {
-    final SaloonOttSuccessHandler ottSuccessHandler;
     final NotificationService notificationService;
+    final SaloonUserClient saloonUserClient;
 
     // Enriches the JWT access token with roles and saloon IDs derived from the view.
     /*@Bean
@@ -152,31 +154,48 @@ class SecurityConfig {
     }*/
 
     @Bean
-    UserDetailsService userDetailsService(SaloonUserClient saloonUserClient) {
-        return saloonUserClient::getUserIdentity;
+    UserDetailsService userDetailsService() {
+        return username -> saloonUserClient.getUserIdentity(username).orElseThrow();
+    }
+
+    @Bean
+    public OneTimeTokenService oneTimeTokenService() {
+        PinOneTimeTokenService service = new PinOneTimeTokenService();
+        service.setTokenExpiresIn(Duration.ofMinutes(3));
+        return service;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/actuator/**","/ott-info.html").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(AbstractHttpConfigurer::disable)
                 .oneTimeTokenLogin(ott -> ott
-                        .failureHandler((request, response, exception) -> {
-                            response.sendRedirect("/login?error");
+                        .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
+                            try {
+                                saloonUserClient.getUserIdentity(oneTimeToken.getUsername())
+                                        .ifPresent(user -> {
+                                            String tokenLink = ServletUriComponentsBuilder.fromCurrentContextPath()
+                                                    .path("/login/ott")
+                                                    .queryParam("token", oneTimeToken.getTokenValue())
+                                                    .toUriString();
+                                            notificationService.send(user.getUsername(), Map.of(
+                                                    "token", oneTimeToken.getTokenValue(),
+                                                    "tokenLink", tokenLink
+                                            ));
+                                        });
+                                response.sendRedirect("/ott-info.html");
+                            } catch (Exception e) {
+                                log.error("Error sending notification for one-time token", e);
+                                response.sendRedirect("/login?error");
+                            }
+
                         })
-                        .tokenGenerationSuccessHandler(ottSuccessHandler)
                 )
+                .formLogin(AbstractHttpConfigurer::disable)
                 .oauth2AuthorizationServer(authorizationServer ->
                         authorizationServer.oidc(Customizer.withDefaults())
-                )
-                .exceptionHandling((exceptions) -> exceptions
-                        .defaultAuthenticationEntryPointFor(
-                                new LoginUrlAuthenticationEntryPoint("/login?error"),
-                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                        )
                 )
                 .cors(Customizer.withDefaults());
 
@@ -184,38 +203,69 @@ class SecurityConfig {
     }
 }
 
-@Component
-@RequiredArgsConstructor
-@Slf4j
-class SaloonOttSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
-    final NotificationService notificationService;
-    private final OneTimeTokenGenerationSuccessHandler redirectHandler =
-            new RedirectOneTimeTokenGenerationSuccessHandler("/login/ott");
+class PinOneTimeTokenService implements OneTimeTokenService {
+
+    private static final int PIN_LENGTH = 6;
+    private static final int MAX_PIN_VALUE = 100_000;
+
+    private final Map<String, OneTimeToken> oneTimeTokenByToken = new ConcurrentHashMap<>();
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    private Clock clock = Clock.systemUTC();
+    // Consider setting a shorter expiration time for these PINs (typically 5-10 minutes for SMS codes) since they're more susceptible to brute force than UUIDs
+    private Duration tokenExpiresIn = Duration.ofMinutes(5);
 
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response,
-                       OneTimeToken oneTimeToken) throws IOException, ServletException {
-        try {
-            var tokenLink = ServletUriComponentsBuilder.fromRequest(request)
-                    .replacePath("/login/ott")
-                    .replaceQuery("token=" + oneTimeToken.getTokenValue())
-                    .toUriString();
-            notificationService.send(
-                    oneTimeToken.getUsername(),
-                    Map.of("token", oneTimeToken.getTokenValue(), "tokenLink", tokenLink)
-            );
-        } catch (Exception e) {
-            log.warn("OTT suppressed — email not registered: {}", oneTimeToken.getUsername());
-            throw new ServletException(e);
+    public OneTimeToken generate(GenerateOneTimeTokenRequest request) {
+        String token = generatePin();
+        Instant expiresAt = this.clock.instant().plus(this.tokenExpiresIn);
+        OneTimeToken ott = new DefaultOneTimeToken(token, request.getUsername(), expiresAt);
+        this.oneTimeTokenByToken.put(token, ott);
+        cleanExpiredTokensIfNeeded();
+        return ott;
+    }
+
+    @Override
+    public @Nullable OneTimeToken consume(OneTimeTokenAuthenticationToken authenticationToken) {
+        OneTimeToken ott = this.oneTimeTokenByToken.remove(authenticationToken.getTokenValue());
+        if (ott == null || isExpired(ott)) {
+            return null;
         }
-        redirectHandler.handle(request, response, oneTimeToken);
+        return ott;
+    }
+
+    public void setTokenExpiresIn(Duration tokenExpiresIn) {
+        Assert.notNull(tokenExpiresIn, "tokenExpiresIn cannot be null");
+        Assert.isTrue(!tokenExpiresIn.isNegative() && !tokenExpiresIn.isZero(),
+                "tokenExpiresIn must be positive");
+        this.tokenExpiresIn = tokenExpiresIn;
+    }
+
+    private String generatePin() {
+        int pin = secureRandom.nextInt(MAX_PIN_VALUE);
+        return String.format("%0" + PIN_LENGTH + "d", pin);
+    }
+
+    private void cleanExpiredTokensIfNeeded() {
+        if (this.oneTimeTokenByToken.size() < 100) {
+            return;
+        }
+        for (Map.Entry<String, OneTimeToken> entry : this.oneTimeTokenByToken.entrySet()) {
+            if (isExpired(entry.getValue())) {
+                this.oneTimeTokenByToken.remove(entry.getKey());
+            }
+        }
+    }
+
+    private boolean isExpired(OneTimeToken ott) {
+        return this.clock.instant().isAfter(ott.getExpiresAt());
     }
 }
 
 @HttpExchange(url = "${spring.application.identity-service-url}")
 interface SaloonUserClient {
     @GetExchange("/internal/user-identity")
-    SaloonUser getUserIdentity(@RequestParam("email") String email);
+    Optional<SaloonUser> getUserIdentity(@RequestParam("email") String email);
 }
 
 record SaloonInfo(String saloonId, String role, Boolean active) {}
@@ -231,7 +281,7 @@ record SaloonUser(String email, List<SaloonInfo> saloons) implements UserDetails
     @Override
     @JsonIgnore
     public @Nullable String getPassword() {
-        return "";
+        return "{noop}password";
     }
 
     @Override
