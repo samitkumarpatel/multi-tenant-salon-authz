@@ -11,12 +11,15 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.authentication.ott.OneTimeToken;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.web.authentication.ott.RedirectOneTimeTokenGenerationSuccessHandler;
 import org.springframework.security.core.Authentication;
@@ -27,6 +30,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -109,26 +113,7 @@ public class MultiTenantSaloonAuthzApplication {
 @EnableWebSecurity
 class SecurityConfig {
     final SaloonOttSuccessHandler ottSuccessHandler;
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/**").permitAll()
-                        .anyRequest().authenticated())
-                .formLogin(AbstractHttpConfigurer::disable)
-                .oneTimeTokenLogin(ott -> ott
-                        .failureHandler((request, response, exception) -> {
-                            response.sendRedirect("/login?error");
-                        })
-                        .tokenGenerationSuccessHandler(ottSuccessHandler)
-                )
-                .oauth2AuthorizationServer(authorizationServer ->
-                        authorizationServer.oidc(Customizer.withDefaults())
-                );
-
-        return http.build();
-    }
+    final NotificationService notificationService;
 
     // Enriches the JWT access token with roles and saloon IDs derived from the view.
     /*@Bean
@@ -170,6 +155,33 @@ class SecurityConfig {
     UserDetailsService userDetailsService(SaloonUserClient saloonUserClient) {
         return saloonUserClient::getUserIdentity;
     }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(AbstractHttpConfigurer::disable)
+                .oneTimeTokenLogin(ott -> ott
+                        .failureHandler((request, response, exception) -> {
+                            response.sendRedirect("/login?error");
+                        })
+                        .tokenGenerationSuccessHandler(ottSuccessHandler)
+                )
+                .oauth2AuthorizationServer(authorizationServer ->
+                        authorizationServer.oidc(Customizer.withDefaults())
+                )
+                .exceptionHandling((exceptions) -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login?error"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                )
+                .cors(Customizer.withDefaults());
+
+        return http.build();
+    }
 }
 
 @Component
@@ -177,7 +189,6 @@ class SecurityConfig {
 @Slf4j
 class SaloonOttSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
     final NotificationService notificationService;
-    final SaloonUserClient saloonUserClient;
     private final OneTimeTokenGenerationSuccessHandler redirectHandler =
             new RedirectOneTimeTokenGenerationSuccessHandler("/login/ott");
 
@@ -185,7 +196,6 @@ class SaloonOttSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        OneTimeToken oneTimeToken) throws IOException, ServletException {
         try {
-            saloonUserClient.getUserIdentity(oneTimeToken.getUsername());
             var tokenLink = ServletUriComponentsBuilder.fromRequest(request)
                     .replacePath("/login/ott")
                     .replaceQuery("token=" + oneTimeToken.getTokenValue())
@@ -196,6 +206,7 @@ class SaloonOttSuccessHandler implements OneTimeTokenGenerationSuccessHandler {
             );
         } catch (Exception e) {
             log.warn("OTT suppressed — email not registered: {}", oneTimeToken.getUsername());
+            throw new ServletException(e);
         }
         redirectHandler.handle(request, response, oneTimeToken);
     }
