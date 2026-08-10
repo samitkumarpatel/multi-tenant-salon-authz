@@ -60,13 +60,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<image>
-						<env>
-							<BPL_JVM_THREAD_COUNT>50</BPL_JVM_THREAD_COUNT>
-						</env>
-					</image>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
