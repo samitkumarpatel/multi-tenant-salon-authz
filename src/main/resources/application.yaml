@@ -15,9 +15,6 @@ spring:
       api-key: ${MAILJET_API_KEY:asfa}
       api-secret: ${MAILJET_API_SECRET:sfas}
   security:
-    user:
-      name: user
-      password: password
     oauth2:
       authorizationserver:
         client:
@@ -57,6 +54,7 @@ spring:
   threads:
     virtual:
       enabled: true
+
 management:
   endpoints:
     web:
