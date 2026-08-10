@@ -2,9 +2,6 @@ package net.samitkumar.multi_tenant_saloon_authz;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
@@ -20,16 +17,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
-import org.springframework.security.web.authentication.ott.RedirectOneTimeTokenGenerationSuccessHandler;
-import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Controller;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
@@ -45,7 +40,6 @@ import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.io.IOException;
 import java.security.Principal;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -117,17 +111,19 @@ class SecurityConfig {
     final NotificationService notificationService;
     final SaloonUserClient saloonUserClient;
 
-    // Enriches the JWT access token with roles and saloon IDs derived from the view.
-    /*@Bean
+    @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             if (!context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) return;
             if (!(context.getPrincipal().getPrincipal() instanceof SaloonUser user)) return;
 
             context.getClaims()
-                    .claim("saloons", user.saloons());
+                    .claim("saloons", user.saloons())
+                    .claim("roles", user.getAuthorities().stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .toList());
         };
-    }*/
+    }
 
     /*@Bean
     Customizer<HttpSecurity> httpSecCustomizer() {
@@ -160,7 +156,7 @@ class SecurityConfig {
 
     @Bean
     public OneTimeTokenService oneTimeTokenService() {
-        PinOneTimeTokenService service = new PinOneTimeTokenService();
+        CustomOTTService service = new CustomOTTService();
         service.setTokenExpiresIn(Duration.ofMinutes(3));
         return service;
     }
@@ -203,7 +199,7 @@ class SecurityConfig {
     }
 }
 
-class PinOneTimeTokenService implements OneTimeTokenService {
+class CustomOTTService implements OneTimeTokenService {
 
     private static final int PIN_LENGTH = 6;
     private static final int MAX_PIN_VALUE = 100_000;
