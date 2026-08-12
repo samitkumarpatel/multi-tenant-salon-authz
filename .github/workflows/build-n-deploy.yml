@@ -49,6 +49,9 @@ jobs:
 
           docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
 
+          docker tag $REGISTRY/$IMAGE_NAME:$IMAGE_TAG $REGISTRY/$IMAGE_NAME:latest
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
           echo "image=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
