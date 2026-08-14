@@ -1,4 +1,4 @@
-package net.samitkumar.multi_tenant_saloon_authz;
+package net.samitkumar.multi_tenant_salon_authz;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -52,12 +52,12 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SpringBootApplication
-@ImportHttpServices(value = SaloonUserClient.class)
+@ImportHttpServices(value = SalonUserClient.class)
 @ImportHttpServices(group = "mailjet", types = {MailJetClient.class})
-public class MultiTenantSaloonAuthzApplication {
+public class MultiTenantSalonAuthzApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MultiTenantSaloonAuthzApplication.class, args);
+        SpringApplication.run(MultiTenantSalonAuthzApplication.class, args);
     }
 
     @Bean
@@ -66,15 +66,15 @@ public class MultiTenantSaloonAuthzApplication {
                 .route()
                 .GET("/ping", request -> {
 
-                    var saloonUser = request.principal()
-                            .map(p -> (SaloonUser) ((Authentication) p).getPrincipal())
+                    var salonUser = request.principal()
+                            .map(p -> (SalonUser) ((Authentication) p).getPrincipal())
                             .orElse(null);
 
                     return ServerResponse.ok().body(
                             Map.of(
                                     "message", "PONG",
                                     "requester", request.principal().map(Principal::getName).orElse("anonymous"),
-                                    "user_principal", saloonUser != null ? saloonUser : Map.of()
+                                    "user_principal", salonUser != null ? salonUser : Map.of()
                             )
                     );
                 })
@@ -109,16 +109,16 @@ public class MultiTenantSaloonAuthzApplication {
 @EnableWebSecurity
 class SecurityConfig {
     final NotificationService notificationService;
-    final SaloonUserClient saloonUserClient;
+    final SalonUserClient salonUserClient;
 
     @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             if (!context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) return;
-            if (!(context.getPrincipal().getPrincipal() instanceof SaloonUser user)) return;
+            if (!(context.getPrincipal().getPrincipal() instanceof SalonUser user)) return;
 
             context.getClaims()
-                    .claim("saloons", user.saloons())
+                    .claim("salons", user.salons())
                     .claim("roles", user.getAuthorities().stream()
                             .map(GrantedAuthority::getAuthority)
                             .toList());
@@ -151,7 +151,7 @@ class SecurityConfig {
 
     @Bean
     UserDetailsService userDetailsService() {
-        return username -> saloonUserClient.getUserIdentity(username).orElseThrow();
+        return username -> salonUserClient.getUserIdentity(username).orElseThrow();
     }
 
     @Bean
@@ -170,7 +170,7 @@ class SecurityConfig {
                 .oneTimeTokenLogin(ott -> ott
                         .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
                             try {
-                                saloonUserClient.getUserIdentity(oneTimeToken.getUsername())
+                                salonUserClient.getUserIdentity(oneTimeToken.getUsername())
                                         .ifPresent(user -> {
                                             String tokenLink = ServletUriComponentsBuilder.fromCurrentContextPath()
                                                     .path("/login/ott")
@@ -259,17 +259,17 @@ class CustomOTTService implements OneTimeTokenService {
 }
 
 @HttpExchange(url = "${spring.application.identity-service-url}")
-interface SaloonUserClient {
+interface SalonUserClient {
     @GetExchange("/internal/user-identity")
-    Optional<SaloonUser> getUserIdentity(@RequestParam("email") String email);
+    Optional<SalonUser> getUserIdentity(@RequestParam("email") String email);
 }
 
-record SaloonInfo(String saloonId, String role, Boolean active) {}
+record SalonInfo(String salonId, String role, Boolean active) {}
 
-record SaloonUser(String email, List<SaloonInfo> saloons) implements UserDetails {
+record SalonUser(String email, List<SalonInfo> salons) implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return saloons.stream()
+        return salons.stream()
                 .map(s -> (GrantedAuthority) s::role)
                 .toList();
     }
@@ -296,34 +296,34 @@ class NotificationService {
 
     void send(String to, Map<String, String> metadata) {
         log.info("Sending Mailjet notification to {} with metadata {}", to, metadata);
-        var mailFrom = new MailjetEmail(sender, "My Saloon");
+        var mailFrom = new MailjetEmail(sender, "My Salon");
         var tto = new MailjetEmail(to, to);
         var token = metadata.get("token");
         var tokenLink = metadata.get("tokenLink");
 
         var textMessage = """
-                Welcome to My Saloon!
+                Welcome to My Salon!
 
                 Your one-time login token is: %s
 
                 Use the link below to sign in (copy and paste into your browser if it does not open):
                 %s
 
-                If you did not request this, please report it to admin@my-saloon.online
+                If you did not request this, please report it to admin@my-salon.online
                 """.formatted(token, tokenLink);
 
         var htmlMessage = """
                 <p>Hi,</p>
-                <p>Your one-time login token for <strong>My Saloon</strong> is:</p>
+                <p>Your one-time login token for <strong>My Salon</strong> is:</p>
                 <h2>%s</h2>
                 <p>Or sign in directly: <a href="%s">%s</a></p>
-                <p><small>If you did not request this, please contact <a href="mailto:admin@my-saloon.online">admin@my-saloon.online</a></small></p>
+                <p><small>If you did not request this, please contact <a href="mailto:admin@my-salon.online">admin@my-salon.online</a></small></p>
                 """.formatted(token, tokenLink, tokenLink);
         var request = new MailjetRequest(List.of(
                 new MailjetMessage(
                         mailFrom,
                         List.of(tto),
-                        "OTT from my-saloon",
+                        "OTT from my-salon",
                         textMessage,
                         htmlMessage
                 )

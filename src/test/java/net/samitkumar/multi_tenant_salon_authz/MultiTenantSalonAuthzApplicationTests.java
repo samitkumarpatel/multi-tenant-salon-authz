@@ -1,4 +1,4 @@
-package net.samitkumar.multi_tenant_saloon_authz;
+package net.samitkumar.multi_tenant_salon_authz;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,10 +29,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
-class MultiTenantSaloonAuthzApplicationTests {
+class MultiTenantSalonAuthzApplicationTests {
 
     @Autowired WebApplicationContext context;
-    @MockitoBean SaloonUserClient saloonUserClient;
+    @MockitoBean SalonUserClient salonUserClient;
     @Autowired OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer;
 
     MockMvc mockMvc;
@@ -44,9 +44,9 @@ class MultiTenantSaloonAuthzApplicationTests {
                 .build();
     }
 
-    static final SaloonUser TEST_USER = new SaloonUser("user@salon.com", List.of(
-            new SaloonInfo("saloon-1", "OWNER", true),
-            new SaloonInfo("saloon-2", "STAFF", false)
+    static final SalonUser TEST_USER = new SalonUser("user@salon.com", List.of(
+            new SalonInfo("salon-1", "OWNER", true),
+            new SalonInfo("salon-2", "STAFF", false)
     ));
 
     @Test
@@ -70,11 +70,11 @@ class MultiTenantSaloonAuthzApplicationTests {
                 .andExpect(jsonPath("$.message").value("PONG"))
                 .andExpect(jsonPath("$.requester").value("user@salon.com"))
                 .andExpect(jsonPath("$.user_principal.email").value("user@salon.com"))
-                .andExpect(jsonPath("$.user_principal.saloons", hasSize(2)))
-                .andExpect(jsonPath("$.user_principal.saloons[0].saloonId").value("saloon-1"))
-                .andExpect(jsonPath("$.user_principal.saloons[0].role").value("OWNER"))
-                .andExpect(jsonPath("$.user_principal.saloons[1].saloonId").value("saloon-2"))
-                .andExpect(jsonPath("$.user_principal.saloons[1].role").value("STAFF"));
+                .andExpect(jsonPath("$.user_principal.salons", hasSize(2)))
+                .andExpect(jsonPath("$.user_principal.salons[0].salonId").value("salon-1"))
+                .andExpect(jsonPath("$.user_principal.salons[0].role").value("OWNER"))
+                .andExpect(jsonPath("$.user_principal.salons[1].salonId").value("salon-2"))
+                .andExpect(jsonPath("$.user_principal.salons[1].role").value("STAFF"));
     }
 
     // --- Public endpoints ---
@@ -94,10 +94,10 @@ class MultiTenantSaloonAuthzApplicationTests {
     // --- Token customizer ---
 
     @Test
-    void tokenCustomizerAddsSaloonsAndRolesToAccessToken() {
-        var user = new SaloonUser("owner@salon.com", List.of(
-                new SaloonInfo("s1", "OWNER", true),
-                new SaloonInfo("s2", "STAFF", false)
+    void tokenCustomizerAddsSalonsAndRolesToAccessToken() {
+        var user = new SalonUser("owner@salon.com", List.of(
+                new SalonInfo("s1", "OWNER", true),
+                new SalonInfo("s2", "STAFF", false)
         ));
         var principal = UsernamePasswordAuthenticationToken.authenticated(
                 user, null, user.getAuthorities());
@@ -116,15 +116,15 @@ class MultiTenantSaloonAuthzApplicationTests {
         tokenCustomizer.customize(context);
 
         var claims = claimsBuilder.build();
-        assertThat((Object) claims.getClaim("saloons")).isNotNull();
+        assertThat((Object) claims.getClaim("salons")).isNotNull();
         assertThat(claims.<List<String>>getClaim("roles"))
                 .containsExactly("OWNER", "STAFF");
     }
 
     @Test
     void tokenCustomizerSkipsNonAccessTokens() {
-        var user = new SaloonUser("owner@salon.com", List.of(
-                new SaloonInfo("s1", "OWNER", true)
+        var user = new SalonUser("owner@salon.com", List.of(
+                new SalonInfo("s1", "OWNER", true)
         ));
         var principal = UsernamePasswordAuthenticationToken.authenticated(
                 user, null, user.getAuthorities());
@@ -142,7 +142,7 @@ class MultiTenantSaloonAuthzApplicationTests {
         tokenCustomizer.customize(context);
 
         var claims = claimsBuilder.build();
-        assertThat((Object) claims.getClaim("saloons")).isNull();
+        assertThat((Object) claims.getClaim("salons")).isNull();
         assertThat((Object) claims.getClaim("roles")).isNull();
     }
 }

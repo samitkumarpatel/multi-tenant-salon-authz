@@ -1,4 +1,4 @@
-package net.samitkumar.multi_tenant_saloon_authz;
+package net.samitkumar.multi_tenant_salon_authz;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;

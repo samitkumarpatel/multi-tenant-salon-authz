@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>net.samitkumar</groupId>
-	<artifactId>multi-tenant-saloon-authz</artifactId>
+	<artifactId>multi-tenant-salon-authz</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
