@@ -3,7 +3,7 @@ server:
 
 logging:
   level:
-    org.springframework.security: INFO
+    org.springframework.security: ${LOGGING_LEVEL:INFO}
 
 spring:
   application:
@@ -11,7 +11,7 @@ spring:
     identity-service-url: ${IDENTITY_SERVICE_URL:http://localhost:8080}
     cors-allowed-origin-pattern: ${CORS_ALLOWED_ORIGIN_PATTERN:*}
     mailjet:
-      sender: "noreply@my-salon.online"
+      sender: "noreply@salonsaas.org"
       api-key: ${MAILJET_API_KEY:asfa}
       api-secret: ${MAILJET_API_SECRET:sfas}
   security:
