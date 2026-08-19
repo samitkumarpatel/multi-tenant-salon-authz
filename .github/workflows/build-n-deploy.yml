@@ -16,6 +16,11 @@ env:
   AKS_RESOURCE_GROUP: multi-tenant-salon-dev
   AKS_CLUSTER_NAME: salon-saas-dev
   AKS_NAMESPACE: salon
+  AWS_REGION: eu-north-1
+  ECS_SERVICE: my-salon-dev-auth
+  ECS_CLUSTER: my-salon-dev-cluster
+  ECS_TASK_DEFINITION_FAMILY: my-salon-dev-auth
+  CONTAINER_NAME: auth
 
 jobs:
   # ── Stage 1: Build & push image ──────────────────────────────────────────────
@@ -60,7 +65,52 @@ jobs:
 
           echo "image=$IMAGE:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-  # ── Stage 2: Azure AKS deployment via Helm ───────────────────────────────────
+  # ── Stage 2: AWS ECS deployment (disabled — replaced by Azure) ───────────────
+  deploy-aws:
+    runs-on: ubuntu-latest
+    if: false
+    needs: build
+    environment: dev
+    permissions:
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@0e613a0980cbf65ed5b322eb7a1e075d28913a83
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION_FAMILY }} \
+            --query 'taskDefinition' \
+            --output json \
+            | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            > task-definition.json
+
+      - name: Render new image into task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build.outputs.image }}
+          environment-variables: |
+            BPL_JVM_THREAD_COUNT=50
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-for-minutes: 10
+
+  # ── Stage 3: Azure AKS deployment via Helm ───────────────────────────────────
   deploy-azure:
     runs-on: ubuntu-latest
     needs: build
