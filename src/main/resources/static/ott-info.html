@@ -32,15 +32,37 @@
         .info-banner {
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
-            color: #3d7a4e;
-            padding: 10px 14px;
-            font-size: 13px;
-            line-height: 1.5;
-            margin-bottom: 0;
+            color: #235533;
+            padding: 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
         }
-        .info-banner a {
-            color: #2c5f3a;
-            font-weight: bold;
+        .info-banner p {
+            margin: 0;
+        }
+        .info-banner .ott-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 12px;
+            padding: 10px 14px;
+            min-height: 44px;
+            background-color: #2c5f3a;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .info-banner .ott-link:hover,
+        .info-banner .ott-link:focus-visible {
+            background-color: #234a2e;
+            text-decoration: underline;
+        }
+        .info-banner .ott-link:focus-visible {
+            outline: 2px solid #235533;
+            outline-offset: 2px;
         }
     </style>
 </head>
@@ -48,8 +70,8 @@
     <div class="card">
         <h2>One-Time Token Sent</h2>
         <div class="info-banner">
-            A login link has been sent to your email. Please use that for login or
-            <a href="/login/ott">click here</a> and fill the one time token.
+            <p>A login link has been sent to your email. Please use that to login.</p>
+            <a class="ott-link" href="/login/ott">Enter your token manually &rarr;</a>
         </div>
     </div>
 </body>
