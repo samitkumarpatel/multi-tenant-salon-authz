@@ -50,7 +50,51 @@ spring:
                 - "profile"
             token:
               access-token-time-to-live: 30m
-              refresh-token-time-to-live: 2h
+          salon-admin-client:
+            registration:
+              client-id: "salon-admin"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+              redirect-uris:
+                - "https://admin.salonsaas.org"
+              scopes:
+                - "openid"
+                - "profile"
+                - "email"
+            token:
+              access-token-time-to-live: 30m
+          salon-super-admin-client:
+            registration:
+              client-id: "salon-super-admin"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+              redirect-uris:
+                - "https://super-admin.salonsaas.org"
+              scopes:
+                - "openid"
+                - "profile"
+                - "email"
+            token:
+              access-token-time-to-live: 30m
+          staff-client:
+            registration:
+              client-id: "salon-staff"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+              redirect-uris:
+                - "https://staff.salonsaas.org"
+              scopes:
+                - "openid"
+                - "profile"
+                - "email"
+            token:
+              access-token-time-to-live: 30m
   threads:
     virtual:
       enabled: true
