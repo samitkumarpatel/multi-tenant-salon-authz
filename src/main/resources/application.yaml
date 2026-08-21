@@ -42,6 +42,7 @@ spring:
                 - "none"
               authorization-grant-types:
                 - "authorization_code"
+                - "refresh_token"
               redirect-uris:
                 - "http://127.0.0.1:3000"
                 - "http://localhost:3000"
