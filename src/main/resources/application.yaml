@@ -58,7 +58,7 @@ spring:
               authorization-grant-types:
                 - "authorization_code"
               redirect-uris:
-                - "https://admin.salonsaas.org"
+                - "https://admin.salonsaas.org/login"
               scopes:
                 - "openid"
                 - "profile"
