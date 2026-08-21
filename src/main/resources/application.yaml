@@ -72,7 +72,7 @@ spring:
               authorization-grant-types:
                 - "authorization_code"
               redirect-uris:
-                - "https://super-admin.salonsaas.org"
+                - "https://super-admin.salonsaas.org/login"
               scopes:
                 - "openid"
                 - "profile"
@@ -86,7 +86,7 @@ spring:
               authorization-grant-types:
                 - "authorization_code"
               redirect-uris:
-                - "https://staff.salonsaas.org"
+                - "https://staff.salonsaas.org/login"
               scopes:
                 - "openid"
                 - "profile"
