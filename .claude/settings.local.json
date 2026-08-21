@@ -6,7 +6,8 @@
       "Bash(mv src/test/java/net/samitkumar/multi_tenant_saloon_authz/MultiTenantSaloonAuthzApplicationTests.java src/test/java/net/samitkumar/multi_tenant_saloon_authz/MultiTenantSalonAuthzApplicationTests.java)",
       "Bash(mv src/test/java/net/samitkumar/multi_tenant_saloon_authz/TestMultiTenantSaloonAuthzApplication.java src/test/java/net/samitkumar/multi_tenant_saloon_authz/TestMultiTenantSalonAuthzApplication.java)",
       "Bash(mv src/main/java/net/samitkumar/multi_tenant_saloon_authz src/main/java/net/samitkumar/multi_tenant_salon_authz)",
-      "Bash(mv src/test/java/net/samitkumar/multi_tenant_saloon_authz src/test/java/net/samitkumar/multi_tenant_salon_authz)"
+      "Bash(mv src/test/java/net/samitkumar/multi_tenant_saloon_authz src/test/java/net/samitkumar/multi_tenant_salon_authz)",
+      "Bash(git *)"
     ]
   }
 }

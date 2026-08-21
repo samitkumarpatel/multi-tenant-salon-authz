@@ -62,7 +62,6 @@ spring:
               scopes:
                 - "openid"
                 - "profile"
-                - "email"
             token:
               access-token-time-to-live: 30m
           salon-super-admin-client:
@@ -77,7 +76,6 @@ spring:
               scopes:
                 - "openid"
                 - "profile"
-                - "email"
             token:
               access-token-time-to-live: 30m
           staff-client:
@@ -92,7 +90,6 @@ spring:
               scopes:
                 - "openid"
                 - "profile"
-                - "email"
             token:
               access-token-time-to-live: 30m
   threads:
