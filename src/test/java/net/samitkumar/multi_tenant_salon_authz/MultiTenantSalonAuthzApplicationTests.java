@@ -1,7 +1,12 @@
 package net.samitkumar.multi_tenant_salon_authz;
 
+import net.samitkumar.multi_tenant_salon_authz.notification.NotificationService;
+import net.samitkumar.multi_tenant_salon_authz.salon.SalonInfo;
+import net.samitkumar.multi_tenant_salon_authz.salon.SalonUser;
+import net.samitkumar.multi_tenant_salon_authz.salon.SalonUserClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -17,14 +22,20 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Import(TestcontainersConfiguration.class)
@@ -32,7 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MultiTenantSalonAuthzApplicationTests {
 
     @Autowired WebApplicationContext context;
-    @MockitoBean SalonUserClient salonUserClient;
+    @MockitoBean
+    SalonUserClient salonUserClient;
+    @MockitoBean
+    NotificationService notificationService;
     @Autowired OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer;
 
     MockMvc mockMvc;
@@ -89,6 +103,86 @@ class MultiTenantSalonAuthzApplicationTests {
     void ottInfoPageIsPublic() throws Exception {
         mockMvc.perform(get("/ott-info.html"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void loginPageIsPublicAndRendersOttRequestForm() throws Exception {
+        mockMvc.perform(get("/login"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/ott/generate")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("_csrf")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
+    }
+
+    @Test
+    void loginPageShowsErrorMessageWhenErrorParamPresent() throws Exception {
+        mockMvc.perform(get("/login").param("error", ""))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("We couldn't sign you in")));
+    }
+
+    @Test
+    void loginPageShowsNotifyErrorMessageWhenTokenNotificationFails() throws Exception {
+        mockMvc.perform(get("/login").param("error", "notify"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Something went wrong on our end")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
+    }
+
+    @Test
+    void loginOttPageIsPublicAndRendersTokenForm() throws Exception {
+        mockMvc.perform(get("/login/ask-ott"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/html"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/login/ott")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("_csrf")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"token\"")));
+    }
+
+    @Test
+    void loginOttPagePrefillsTokenFromQueryParam() throws Exception {
+        mockMvc.perform(get("/login/ask-ott").param("token", "123456"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"123456\"")));
+    }
+
+    // --- Full OTT login flow ---
+
+    @Test
+    void fullOttLoginFlowGeneratesAndAuthenticatesWithToken() throws Exception {
+        when(salonUserClient.getUserIdentity("user@salon.com")).thenReturn(Optional.of(TEST_USER));
+
+        mockMvc.perform(post("/ott/generate")
+                        .with(csrf())
+                        .param("username", "user@salon.com"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott-info.html"));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(notificationService).send(eq("user@salon.com"), captor.capture());
+        String token = captor.getValue().get("token");
+        assertThat(token).isNotBlank();
+
+        mockMvc.perform(post("/login/ott")
+                        .with(csrf())
+                        .accept(org.springframework.http.MediaType.TEXT_HTML)
+                        .param("token", token))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(result -> assertThat(result.getResponse().getRedirectedUrl())
+                        .as("should not bounce back to the login page")
+                        .doesNotContain("/login"));
+    }
+
+    @Test
+    void ottLoginFailsWithUnknownToken() throws Exception {
+        mockMvc.perform(post("/login/ott")
+                        .with(csrf())
+                        .accept(org.springframework.http.MediaType.TEXT_HTML)
+                        .param("token", "000000"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?error"));
     }
 
     // --- Token customizer ---
