@@ -1,4 +1,4 @@
-package net.samitkumar.multi_tenant_salon_authz.controller;
+package net.samitkumar.multi_tenant_salon_authz.ott;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -6,16 +6,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
-class LoginController {
-    @GetMapping("/login")
+class OTTController {
+    @GetMapping("/ott-login")
     String login() {
-        return "login";
+        return "ott-login";
     }
 
-    @GetMapping("/login/ask-ott")
+    @GetMapping("/ott-login/ask-ott")
     String loginOtt(@RequestParam(name = "token", required = false) String token, Model model) {
         model.addAttribute("token", token == null ? "" : token);
-        return "login-ott";
+        return "ott-input-form";
     }
 
     @GetMapping("/ott-info.html")

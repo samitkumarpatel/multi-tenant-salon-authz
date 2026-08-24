@@ -4,5 +4,4 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-record MailjetRequest(@JsonProperty("Messages") List<MailjetMessage> messages) {
-}
+record MailjetRequest(@JsonProperty("Messages") List<MailjetMessage> messages) {}

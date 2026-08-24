@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class CustomOTTService implements OneTimeTokenService {
+public class OTTService implements OneTimeTokenService {
 
     private static final int PIN_LENGTH = 6;
     private static final int MAX_PIN_VALUE = 100_000;

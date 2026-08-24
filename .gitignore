@@ -34,3 +34,5 @@ build/
 helm/**/.env
 !helm/**/.env.example
 **/.env/**
+.claude
+**/.claude

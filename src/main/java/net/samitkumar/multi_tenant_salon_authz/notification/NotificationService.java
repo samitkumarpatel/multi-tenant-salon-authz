@@ -18,13 +18,13 @@ public class NotificationService {
 
     public void send(String to, Map<String, String> metadata) {
         log.info("Sending Mailjet notification to {} with metadata {}", to, metadata);
-        var mailFrom = new MailjetEmail(sender, "My Salon");
+        var mailFrom = new MailjetEmail(sender, "SalonSaaS");
         var tto = new MailjetEmail(to, to);
         var token = metadata.get("token");
         var tokenLink = metadata.get("tokenLink");
 
         var textMessage = """
-                Welcome to My Salon!
+                Welcome to SalonSaaS!
                 
                 Your one-time login token is: %s
                 
@@ -36,7 +36,7 @@ public class NotificationService {
 
         var htmlMessage = """
                 <p>Hi,</p>
-                <p>Your one-time login token for <strong>My Salon</strong> is:</p>
+                <p>Your one-time login token for <strong>SalonSaaS</strong> is:</p>
                 <h2>%s</h2>
                 <p>Or sign in directly: <a href="%s">%s</a></p>
                 <p><small>If you did not request this, please contact <a href="mailto:admin@salonsaas.org">admin@salonsaas.org</a></small></p>
@@ -45,7 +45,7 @@ public class NotificationService {
                 new MailjetMessage(
                         mailFrom,
                         List.of(tto),
-                        "SaloonSaaS OTT",
+                        "SalonSaaS OTT",
                         textMessage,
                         htmlMessage
                 )
