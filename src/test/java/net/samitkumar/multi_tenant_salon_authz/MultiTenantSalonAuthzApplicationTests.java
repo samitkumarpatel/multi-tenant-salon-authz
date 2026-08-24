@@ -107,7 +107,7 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginPageIsPublicAndRendersOttRequestForm() throws Exception {
-        mockMvc.perform(get("/login"))
+        mockMvc.perform(get("/ott-login"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/ott/generate")))
@@ -117,14 +117,14 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginPageShowsErrorMessageWhenErrorParamPresent() throws Exception {
-        mockMvc.perform(get("/login").param("error", ""))
+        mockMvc.perform(get("/ott-login").param("error", ""))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("We couldn't sign you in")));
     }
 
     @Test
     void loginPageShowsNotifyErrorMessageWhenTokenNotificationFails() throws Exception {
-        mockMvc.perform(get("/login").param("error", "notify"))
+        mockMvc.perform(get("/ott-login").param("error", "notify"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Something went wrong on our end")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
@@ -132,7 +132,7 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginOttPageIsPublicAndRendersTokenForm() throws Exception {
-        mockMvc.perform(get("/login/ask-ott"))
+        mockMvc.perform(get("/ott-login/ask-ott"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/login/ott")))
@@ -142,7 +142,7 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginOttPagePrefillsTokenFromQueryParam() throws Exception {
-        mockMvc.perform(get("/login/ask-ott").param("token", "123456"))
+        mockMvc.perform(get("/ott-login/ask-ott").param("token", "123456"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"123456\"")));
     }
@@ -182,7 +182,7 @@ class MultiTenantSalonAuthzApplicationTests {
                         .accept(org.springframework.http.MediaType.TEXT_HTML)
                         .param("token", "000000"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?error"));
+                .andExpect(redirectedUrl("/ott-login?error"));
     }
 
     // --- Token customizer ---
