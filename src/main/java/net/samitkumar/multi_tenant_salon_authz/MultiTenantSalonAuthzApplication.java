@@ -18,6 +18,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -148,6 +149,7 @@ class SecurityConfig {
                         .requestMatchers("/actuator/**","/ott-info.html","/ott-login","/ott-login/ask-ott").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
+                .oidcLogout(Customizer.withDefaults())
                 .oneTimeTokenLogin(ott ->
                         ott
                                 .loginPage("/ott-login")
