@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - "src/**"
-      - "helm/auth/**"
       - "pom.xml"
       - ".github/workflows/build-n-deploy.yml"
   workflow_dispatch:
@@ -13,17 +12,9 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: samitkumarpatel/multi-tenant-salon-authz
-  AKS_RESOURCE_GROUP: multi-tenant-salon-dev
-  AKS_CLUSTER_NAME: salon-saas-dev
-  AKS_NAMESPACE: salon
-  AWS_REGION: eu-north-1
-  ECS_SERVICE: my-salon-dev-auth
-  ECS_CLUSTER: my-salon-dev-cluster
-  ECS_TASK_DEFINITION_FAMILY: my-salon-dev-auth
-  CONTAINER_NAME: auth
 
 jobs:
-  # ── Stage 1: Build & push image ──────────────────────────────────────────────
+  # ── Stage 1: Build & push image ───────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
     permissions:
@@ -65,14 +56,63 @@ jobs:
 
           echo "image=$IMAGE:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-  # ── Stage 2: AWS ECS deployment (disabled — replaced by Azure) ───────────────
-  deploy-aws:
+  # ── Deploy · Azure Container Apps (ACTIVE) ────────────────────────────────
+  # Infra (the salon-saas-mix-auth Container App, its env, PostgreSQL and Key
+  # Vault) is provisioned by ../multi-tenant-salon infrastructure/mix. This job
+  # only rolls the image. The `api` service ships from the multi-tenant-salon
+  # repo's workflow.
+  container-apps-deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: dev
+    permissions:
+      contents: read
+
+    env:
+      RESOURCE_GROUP: multi-tenant-salon-mix
+      AUTH_APP: salon-saas-mix-auth
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Roll auth image on Container Apps
+        run: |
+          az containerapp update \
+            --name "$AUTH_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "${{ needs.build.outputs.image }}"
+
+      - name: Show revision status on failure
+        if: failure()
+        run: |
+          az containerapp revision list \
+            --name "$AUTH_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "[].{name:name, active:properties.active, state:properties.runningState, replicas:properties.replicas}" \
+            -o table || true
+
+  # ── Deploy · AWS ECS / Fargate (DISABLED) ────────────────────────────────
+  # Replaced by Container Apps in the Cloudflare + Container Apps migration.
+  # To re-enable: re-provision the ECS cluster/service, set the
+  # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY secrets, then change `if: false`
+  # to `if: true`.
+  aws-ecs-deploy:
     runs-on: ubuntu-latest
     if: false
     needs: build
     environment: dev
     permissions:
       contents: read
+
+    env:
+      AWS_REGION: eu-north-1
+      ECS_SERVICE: my-salon-dev-auth
+      ECS_CLUSTER: my-salon-dev-cluster
+      ECS_TASK_DEFINITION_FAMILY: my-salon-dev-auth
+      CONTAINER_NAME: auth
 
     steps:
       - name: Configure AWS credentials
@@ -110,13 +150,22 @@ jobs:
           wait-for-service-stability: true
           wait-for-minutes: 10
 
-  # ── Stage 3: Azure AKS deployment via Helm ───────────────────────────────────
-  deploy-azure:
+  # ── Deploy · Azure AKS via Helm (DISABLED) ──────────────────────────────
+  # The AKS cluster (salon-saas-dev) was retired in the Container Apps
+  # migration. To re-enable: re-provision the AKS cluster, then change
+  # `if: false` to `if: true`. Chart lives in helm/auth.
+  aks-deploy:
     runs-on: ubuntu-latest
+    if: false
     needs: build
     environment: dev
     permissions:
       contents: read
+
+    env:
+      AKS_RESOURCE_GROUP: multi-tenant-salon-dev
+      AKS_CLUSTER_NAME: salon-saas-dev
+      AKS_NAMESPACE: salon
 
     steps:
       - uses: actions/checkout@v4

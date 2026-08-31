@@ -1,5 +1,9 @@
 server:
   port: 9000
+  # Behind the Container Apps / nginx ingress that terminates TLS. Without this
+  # the app sees plain http, so issued `iss`, redirect_uri matching and
+  # sendRedirect() all use http://…:9000 and the OAuth2 flow breaks at the client.
+  forward-headers-strategy: framework
 
 logging:
   level:
