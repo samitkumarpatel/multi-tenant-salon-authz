@@ -34,7 +34,7 @@ import org.springframework.web.service.registry.ImportHttpServices;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
-import org.springframework.web.util.UriComponentsBuilder;
+// import org.springframework.web.util.UriComponentsBuilder; // used only by the disabled magic-link email path below
 
 import java.security.Principal;
 import java.time.Duration;
@@ -158,20 +158,30 @@ class SecurityConfig {
                                 .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
                                     try {
                                         salonUserClient.getUserIdentity(oneTimeToken.getUsername())
-                                                .ifPresent(user -> {
-                                                    String tokenLink = UriComponentsBuilder.fromUriString(request.getRequestURL().toString())
-                                                            .replacePath(request.getContextPath())
-                                                            .replaceQuery(null)
-                                                            .fragment(null)
-                                                            .path("/ott-login/ask-ott")
-                                                            .queryParam("token", oneTimeToken.getTokenValue())
-                                                            .toUriString();
-
-                                                    notificationService.send(user.getUsername(), Map.of(
-                                                            "token", oneTimeToken.getTokenValue(),
-                                                            "tokenLink", tokenLink
-                                                    ));
-                                                });
+                                                .ifPresent(user -> notificationService.send(user.getUsername(), Map.of(
+                                                        "token", oneTimeToken.getTokenValue()
+                                                )));
+                                        // ── Disabled: magic-link email ──────────────────────────────────
+                                        // The emailed link opens a different browser/tab than the one that
+                                        // started the OAuth2 + PKCE flow, so the client loses its
+                                        // state/code_verifier and shows "Sign-in expired". We now email only
+                                        // the code (above). Re-enable by swapping the send() call above for:
+                                        //
+                                        // salonUserClient.getUserIdentity(oneTimeToken.getUsername())
+                                        //         .ifPresent(user -> {
+                                        //             String tokenLink = UriComponentsBuilder.fromUriString(request.getRequestURL().toString())
+                                        //                     .replacePath(request.getContextPath())
+                                        //                     .replaceQuery(null)
+                                        //                     .fragment(null)
+                                        //                     .path("/ott-login/ask-ott")
+                                        //                     .queryParam("token", oneTimeToken.getTokenValue())
+                                        //                     .toUriString();
+                                        //
+                                        //             notificationService.send(user.getUsername(), Map.of(
+                                        //                     "token", oneTimeToken.getTokenValue(),
+                                        //                     "tokenLink", tokenLink
+                                        //             ));
+                                        //         });
                                         response.sendRedirect("/ott-info.html");
                                     } catch (UserNotfoundException e) {
                                         log.error("user not found", e);
