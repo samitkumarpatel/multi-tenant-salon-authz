@@ -21,6 +21,7 @@
             padding: 40px 36px;
             width: 100%;
             max-width: 380px;
+            border-radius: 8px;
         }
         h2 {
             font-size: 2rem;
@@ -68,21 +69,30 @@
             margin-top: 12px;
             font-weight: 600;
         }
+        .back-link {
+            display: block;
+            margin-top: 16px;
+            text-align: center;
+            color: #2c5f3a;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .back-link:hover,
+        .back-link:focus-visible {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>Check your email</h2>
         <div class="info-banner">
-            <p>We emailed you a one-time login code. Enter it here in this tab to
-               finish signing in &mdash; that keeps you in the same browser session
-               you started from.</p>
-            <a class="ott-link" href="/ott-login/ask-ott">Enter your code &rarr;</a>
-            <!--/* Disabled with the magic-link email (see NotificationService):
-            <p class="ott-divider">The email also has a sign-in link, but it only
-               works if opened in this same browser.</p>
-            */-->
+            <p>We emailed you a magic sign-in link &mdash; click it to finish signing in.</p>
+            <p class="ott-divider">If it doesn't work in this browser, the email also has a
+               code you can enter manually.</p>
+            <a class="ott-link" href="/ott/input">Enter your code instead &rarr;</a>
         </div>
+        <a class="back-link" href="/ott/login">&larr; Back to sign in</a>
     </div>
 </body>
 </html>

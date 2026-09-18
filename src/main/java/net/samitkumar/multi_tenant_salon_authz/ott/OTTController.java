@@ -7,19 +7,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 class OTTController {
-    @GetMapping("/ott-login")
+    @GetMapping("/ott/login")
     String login() {
         return "ott-login";
     }
 
-    @GetMapping("/ott-login/ask-ott")
-    String loginOtt(@RequestParam(name = "token", required = false) String token, Model model) {
+    @GetMapping("/ott/input")
+    String input(@RequestParam(name = "token", required = false) String token, Model model) {
         model.addAttribute("token", token == null ? "" : token);
         return "ott-input-form";
     }
 
-    @GetMapping("/ott-info.html")
-    String ottInfo() {
+    @GetMapping("/ott/sent")
+    String sent() {
         return "ott-info";
     }
 }

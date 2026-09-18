@@ -43,9 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MultiTenantSalonAuthzApplicationTests {
 
     @Autowired WebApplicationContext context;
-    @MockitoBean
+    @MockitoBean(name = "inMemorySalonUserClient")
     SalonUserClient salonUserClient;
-    @MockitoBean
+    @MockitoBean(name = "inMemoryNotificationService")
     NotificationService notificationService;
     @Autowired OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer;
 
@@ -100,31 +100,33 @@ class MultiTenantSalonAuthzApplicationTests {
     }
 
     @Test
-    void ottInfoPageIsPublic() throws Exception {
-        mockMvc.perform(get("/ott-info.html"))
+    void ottSentPageIsPublic() throws Exception {
+        mockMvc.perform(get("/ott/sent"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void loginPageIsPublicAndRendersOttRequestForm() throws Exception {
-        mockMvc.perform(get("/ott-login"))
+    void loginPageIsPublicAndRendersOttRequestFormWithDeliveryChoice() throws Exception {
+        mockMvc.perform(get("/ott/login"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/ott/generate")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"short-token\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"magic-link\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("_csrf")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
     }
 
     @Test
     void loginPageShowsErrorMessageWhenErrorParamPresent() throws Exception {
-        mockMvc.perform(get("/ott-login").param("error", ""))
+        mockMvc.perform(get("/ott/login").param("error", ""))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("We couldn't sign you in")));
     }
 
     @Test
     void loginPageShowsNotifyErrorMessageWhenTokenNotificationFails() throws Exception {
-        mockMvc.perform(get("/ott-login").param("error", "notify"))
+        mockMvc.perform(get("/ott/login").param("error", "notify"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Something went wrong on our end")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
@@ -132,7 +134,7 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginOttPageIsPublicAndRendersTokenForm() throws Exception {
-        mockMvc.perform(get("/ott-login/ask-ott"))
+        mockMvc.perform(get("/ott/input"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/login/ott")))
@@ -142,7 +144,7 @@ class MultiTenantSalonAuthzApplicationTests {
 
     @Test
     void loginOttPagePrefillsTokenFromQueryParam() throws Exception {
-        mockMvc.perform(get("/ott-login/ask-ott").param("token", "123456"))
+        mockMvc.perform(get("/ott/input").param("token", "123456"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"123456\"")));
     }
@@ -150,20 +152,22 @@ class MultiTenantSalonAuthzApplicationTests {
     // --- Full OTT login flow ---
 
     @Test
-    void fullOttLoginFlowGeneratesAndAuthenticatesWithToken() throws Exception {
+    void shortTokenFlowGeneratesAndAuthenticatesWithToken() throws Exception {
         when(salonUserClient.getUserIdentity("user@salon.com")).thenReturn(Optional.of(TEST_USER));
 
         mockMvc.perform(post("/ott/generate")
                         .with(csrf())
-                        .param("username", "user@salon.com"))
+                        .param("username", "user@salon.com")
+                        .param("loginType", "short-token"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/ott-info.html"));
+                .andExpect(redirectedUrl("/ott/input"));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
         verify(notificationService).send(eq("user@salon.com"), captor.capture());
         String token = captor.getValue().get("token");
         assertThat(token).isNotBlank();
+        assertThat(captor.getValue()).doesNotContainKey("tokenLink");
 
         mockMvc.perform(post("/login/ott")
                         .with(csrf())
@@ -176,13 +180,31 @@ class MultiTenantSalonAuthzApplicationTests {
     }
 
     @Test
+    void magicLinkFlowGeneratesTokenLinkAndRedirectsToSentPage() throws Exception {
+        when(salonUserClient.getUserIdentity("user@salon.com")).thenReturn(Optional.of(TEST_USER));
+
+        mockMvc.perform(post("/ott/generate")
+                        .with(csrf())
+                        .param("username", "user@salon.com")
+                        .param("loginType", "magic-link"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott/sent"));
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(notificationService).send(eq("user@salon.com"), captor.capture());
+        assertThat(captor.getValue().get("token")).isNotBlank();
+        assertThat(captor.getValue().get("tokenLink")).contains("/ott/input").contains("token=");
+    }
+
+    @Test
     void ottLoginFailsWithUnknownToken() throws Exception {
         mockMvc.perform(post("/login/ott")
                         .with(csrf())
                         .accept(org.springframework.http.MediaType.TEXT_HTML)
                         .param("token", "000000"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/ott-login?error"));
+                .andExpect(redirectedUrl("/ott/login?error"));
     }
 
     // --- Token customizer ---
