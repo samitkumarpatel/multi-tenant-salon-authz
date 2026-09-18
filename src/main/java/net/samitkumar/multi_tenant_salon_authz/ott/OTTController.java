@@ -14,7 +14,9 @@ class OTTController {
 
     @GetMapping("/ott/input")
     String input(@RequestParam(name = "token", required = false) String token, Model model) {
+        boolean fromMagicLink = token != null && !token.isBlank();
         model.addAttribute("token", token == null ? "" : token);
+        model.addAttribute("fromMagicLink", fromMagicLink);
         return "ott-input-form";
     }
 

@@ -9,12 +9,19 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class OTTService implements OneTimeTokenService {
 
+    public enum TokenFormat { PIN, UUID }
+
     private static final int PIN_LENGTH = 6;
     private static final int MAX_PIN_VALUE = 100_000;
+
+    // Set by GenerateOneTimeTokenRequestResolver synchronously, right before it hands the
+    // resolved request to GenerateOneTimeTokenFilter#generate() on the same thread.
+    private static final ThreadLocal<TokenFormat> NEXT_TOKEN_FORMAT = new ThreadLocal<>();
 
     private final Map<String, OneTimeToken> oneTimeTokenByToken = new ConcurrentHashMap<>();
     private final SecureRandom secureRandom = new SecureRandom();
@@ -23,9 +30,16 @@ public class OTTService implements OneTimeTokenService {
     // Consider setting a shorter expiration time for these PINs (typically 5-10 minutes for SMS codes) since they're more susceptible to brute force than UUIDs
     private Duration tokenExpiresIn = Duration.ofMinutes(5);
 
+    public static void useTokenFormatForNextGeneration(TokenFormat format) {
+        Assert.notNull(format, "format cannot be null");
+        NEXT_TOKEN_FORMAT.set(format);
+    }
+
     @Override
     public OneTimeToken generate(GenerateOneTimeTokenRequest request) {
-        String token = generatePin();
+        TokenFormat format = NEXT_TOKEN_FORMAT.get();
+        NEXT_TOKEN_FORMAT.remove();
+        String token = format == TokenFormat.PIN ? generatePin() : UUID.randomUUID().toString();
         Instant expiresAt = this.clock.instant().plus(this.tokenExpiresIn);
         OneTimeToken ott = new DefaultOneTimeToken(token, request.getUsername(), expiresAt);
         this.oneTimeTokenByToken.put(token, ott);

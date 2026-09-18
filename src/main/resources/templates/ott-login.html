@@ -63,84 +63,57 @@
             border-color: transparent;
         }
 
-        fieldset {
-            border: none;
-            margin-bottom: 24px;
-        }
-        fieldset legend {
+        .send-label {
             font-weight: 600;
             color: #235533;
             margin-bottom: 8px;
-            padding: 0;
         }
-        .delivery-options {
+        .delivery-actions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 10px;
+            margin-bottom: 24px;
         }
-        .delivery-options input[type="radio"] {
-            position: absolute;
-            opacity: 0;
-            width: 1px;
-            height: 1px;
+
+        .delivery-btn {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 64px;
+            padding: 12px 14px;
+            font-size: 14px;
+            background-color: #2c5f3a;
+            color: #fff;
+            border: 2px solid #2c5f3a;
+            border-radius: 6px;
+            cursor: pointer;
         }
-        .delivery-card {
+        .delivery-btn .icon {
+            font-size: 1.3rem;
+        }
+        .delivery-btn .text {
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            gap: 4px;
-            padding: 14px 8px;
-            min-height: 88px;
-            justify-content: center;
-            border: 2px solid #ccc;
-            border-radius: 6px;
-            cursor: pointer;
-            color: #333;
-            font-weight: 400;
-            transition: border-color 0.15s ease, background-color 0.15s ease;
         }
-        .delivery-card .icon {
-            font-size: 1.3rem;
-        }
-        .delivery-card .title {
+        .delivery-btn .title {
             font-weight: 700;
-            color: #000;
-        }
-        .delivery-card .desc {
-            font-size: 12px;
-            color: #666;
-        }
-        .delivery-options input[type="radio"]:checked + .delivery-card {
-            border-color: #2c5f3a;
-            background-color: #eef4ef;
-        }
-        .delivery-options input[type="radio"]:focus-visible + .delivery-card {
-            outline: 2px solid #235533;
-            outline-offset: 2px;
-        }
-
-        button.primary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            width: 100%;
-            min-height: 44px;
-            padding: 10px 14px;
-            background-color: #2c5f3a;
             color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
         }
-        button.primary:hover,
-        button.primary:focus-visible {
+        .delivery-btn .desc {
+            font-size: 12px;
+            color: #d9e8dd;
+        }
+        .delivery-btn:hover,
+        .delivery-btn:focus-visible {
             background-color: #234a2e;
+            border-color: #234a2e;
         }
-        button.primary:focus-visible {
+        .delivery-btn:focus-visible {
             outline: 2px solid #235533;
             outline-offset: 2px;
         }
@@ -157,6 +130,19 @@
         .error-banner p {
             margin: 0;
         }
+        .notice-banner {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #235533;
+            padding: 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .notice-banner p {
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -165,35 +151,37 @@
             <h2>Sign in</h2>
 
             <div class="error-banner" th:if="${param.error != null}">
-                <p th:if="${#strings.equals(param.error[0], 'notify')}">Something went wrong on our end. Please try again in a few minutes.</p>
+                <p th:if="${#strings.equals(param.error[0], 'notify')}">We are unable to process your request, please try again later.</p>
                 <p th:unless="${#strings.equals(param.error[0], 'notify')}">We couldn't sign you in. Please check your email and try again.</p>
+            </div>
+
+            <div class="notice-banner" th:if="${param.error == null and param.logout != null}">
+                <p>You have been signed out.</p>
             </div>
 
             <label for="ott-username">Email</label>
             <input type="text" id="ott-username" name="username" placeholder="you@example.com" autocomplete="username" required autofocus>
 
-            <fieldset>
-                <legend>How should we send it?</legend>
-                <div class="delivery-options">
-                    <input type="radio" id="delivery-magic-link" name="loginType" value="magic-link" checked>
-                    <label for="delivery-magic-link" class="delivery-card">
-                        <span class="icon" aria-hidden="true">&#128279;</span>
-                        <span class="title">Magic link</span>
+            <p class="send-label">How should we send it?</p>
+            <div class="delivery-actions">
+                <button class="delivery-btn" type="submit" name="loginType" value="magic-link">
+                    <span class="icon" aria-hidden="true">&#128279;</span>
+                    <span class="text">
+                        <span class="title">Send a magic link</span>
                         <span class="desc">One click to sign in</span>
-                    </label>
+                    </span>
+                </button>
 
-                    <input type="radio" id="delivery-short-token" name="loginType" value="short-token">
-                    <label for="delivery-short-token" class="delivery-card">
-                        <span class="icon" aria-hidden="true">&#128290;</span>
-                        <span class="title">6-digit code</span>
+                <button class="delivery-btn" type="submit" name="loginType" value="short-token">
+                    <span class="icon" aria-hidden="true">&#128290;</span>
+                    <span class="text">
+                        <span class="title">Send the code</span>
                         <span class="desc">Type it in yourself</span>
-                    </label>
-                </div>
-            </fieldset>
+                    </span>
+                </button>
+            </div>
 
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-
-            <button class="primary" type="submit">Continue</button>
         </form>
     </div>
 </body>

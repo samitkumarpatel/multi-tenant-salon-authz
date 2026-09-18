@@ -33,24 +33,22 @@ public class NotificationService {
             textMessage = """
                     Welcome to SalonSaaS!
 
-                    Your one-time login code is:
-
-                        %s
-
-                    Use the link below to sign in (copy and paste into your browser if it does not open):
+                    Click the link below to sign in (copy and paste into your browser if it does not open):
                     %s
 
+                    This link is valid for a few minutes and can be used once.
+
                     If you did not request this, please report it to admin@salonsaas.org
-                    """.formatted(token, tokenLink);
+                    """.formatted(tokenLink);
 
             htmlMessage = """
                     <p>Hi,</p>
-                    <p>Your one-time login code for <strong>SalonSaaS</strong> is:</p>
-                    <h2 style="font-size:28px;letter-spacing:4px;margin:12px 0">%s</h2>
-                    <p>Or sign in directly: <a href="%s">%s</a></p>
+                    <p>Click below to sign in to <strong>SalonSaaS</strong>:</p>
+                    <p><a href="%s">%s</a></p>
+                    <p>This link is valid for a few minutes and can be used once.</p>
                     <p><small>If you did not request this, please contact
                        <a href="mailto:admin@salonsaas.org">admin@salonsaas.org</a></small></p>
-                    """.formatted(token, tokenLink, tokenLink);
+                    """.formatted(tokenLink, tokenLink);
         } else {
             textMessage = """
                     Welcome to SalonSaaS!

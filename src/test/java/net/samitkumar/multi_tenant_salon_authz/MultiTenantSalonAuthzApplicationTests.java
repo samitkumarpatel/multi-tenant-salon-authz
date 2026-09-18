@@ -10,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -48,6 +50,7 @@ class MultiTenantSalonAuthzApplicationTests {
     @MockitoBean(name = "inMemoryNotificationService")
     NotificationService notificationService;
     @Autowired OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer;
+    @Autowired JdbcTemplate jdbcTemplate;
 
     MockMvc mockMvc;
 
@@ -105,6 +108,16 @@ class MultiTenantSalonAuthzApplicationTests {
                 .andExpect(status().isOk());
     }
 
+    // --- Session persistence (Spring Session JDBC, Flyway-managed schema) ---
+
+    @Test
+    void flywayCreatesSpringSessionSchema() {
+        Integer tableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN ('spring_session', 'spring_session_attributes')",
+                Integer.class);
+        assertThat(tableCount).isEqualTo(2);
+    }
+
     @Test
     void loginPageIsPublicAndRendersOttRequestFormWithDeliveryChoice() throws Exception {
         mockMvc.perform(get("/ott/login"))
@@ -128,7 +141,7 @@ class MultiTenantSalonAuthzApplicationTests {
     void loginPageShowsNotifyErrorMessageWhenTokenNotificationFails() throws Exception {
         mockMvc.perform(get("/ott/login").param("error", "notify"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Something went wrong on our end")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("We are unable to process your request")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
     }
 
@@ -205,6 +218,48 @@ class MultiTenantSalonAuthzApplicationTests {
                         .param("token", "000000"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/ott/login?error"));
+    }
+
+    @Test
+    void generateForUnregisteredEmailStillRedirectsAsIfSentToPreventUserEnumeration() throws Exception {
+        when(salonUserClient.getUserIdentity("nobody@salon.com")).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/ott/generate")
+                        .with(csrf())
+                        .param("username", "nobody@salon.com")
+                        .param("loginType", "magic-link"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott/sent"));
+
+        verify(notificationService, never()).send(eq("nobody@salon.com"), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void generateRedirectsToGenericErrorWhenIdentityLookupFails() throws Exception {
+        when(salonUserClient.getUserIdentity("user@salon.com")).thenThrow(new RuntimeException("identity service unavailable"));
+
+        mockMvc.perform(post("/ott/generate")
+                        .with(csrf())
+                        .param("username", "user@salon.com")
+                        .param("loginType", "short-token"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott/login?error=notify"));
+
+        verify(notificationService, never()).send(eq("user@salon.com"), org.mockito.ArgumentMatchers.any());
+    }
+
+    // --- Logout ---
+
+    @Test
+    void logoutRedirectsToLoginPageWithLogoutParam() throws Exception {
+        var auth = UsernamePasswordAuthenticationToken.authenticated(
+                TEST_USER, null, TEST_USER.getAuthorities());
+
+        mockMvc.perform(post("/logout")
+                        .with(csrf())
+                        .with(authentication(auth)))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott/login?logout"));
     }
 
     // --- Token customizer ---

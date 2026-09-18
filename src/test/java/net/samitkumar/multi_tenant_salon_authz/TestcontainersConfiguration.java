@@ -7,6 +7,7 @@ import net.samitkumar.multi_tenant_salon_authz.salon.SalonUserClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -16,6 +17,8 @@ import org.springframework.security.oauth2.server.authorization.client.InMemoryR
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.Map;
@@ -24,12 +27,12 @@ import java.util.Optional;
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
 
-    /**
-     * Stands in for the real {@code SalonUserClient} HTTP client so a local/test run never
-     * calls out to the identity service. {@code @Primary} so it wins over the real client bean;
-     * {@link net.samitkumar.multi_tenant_salon_authz.MultiTenantSalonAuthzApplicationTests} still
-     * replaces this exact bean (by name) with a Mockito mock where it needs per-test stubbing.
-     */
+    @Bean
+    @ServiceConnection
+    PostgreSQLContainer postgresContainer() {
+        return new PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"));
+    }
+
     @Bean
     @Primary
     SalonUserClient inMemorySalonUserClient() {
@@ -48,27 +51,22 @@ class TestcontainersConfiguration {
         return email -> Optional.ofNullable(users.get(email));
     }
 
-    /**
-     * Stands in for the real {@code NotificationService} so a local/test run never calls the
-     * real Mailjet API — it just logs what would have been sent. Same {@code @Primary} +
-     * named-bean pattern as {@link #inMemorySalonUserClient()}, for the same reason.
-     */
     @Bean
     @Primary
     NotificationService inMemoryNotificationService() {
-        Logger log = LoggerFactory.getLogger(NotificationService.class);
         // mailJetClient is never used below — send() is fully overridden — so null is safe here.
         return new NotificationService(null) {
             @Override
             public void send(String to, Map<String, String> metadata) {
-                log.info("[test] Skipping real Mailjet call — would send to {} with metadata {}", to, metadata);
+                System.out.println("[test] Skipping real Mailjet call — would send to %s with metadata %s".formatted(to, metadata));
             }
         };
     }
 
     @Bean
     RegisteredClientRepository registeredClientRepository() {
-        RegisteredClient oidcClient = RegisteredClient.withId("test-oidc-client")
+        RegisteredClient oidcClient = RegisteredClient
+                .withId("test-oidc-client")
                 .clientId("oidc-client")
                 .clientSecret("{noop}secret")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)

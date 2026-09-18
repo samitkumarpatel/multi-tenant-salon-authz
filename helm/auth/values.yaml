@@ -44,6 +44,17 @@ env:
   # api runs in the same namespace (salon), so the ClusterIP Service name resolves directly.
   IDENTITY_SERVICE_URL: "http://api.salon.svc.cluster.local:8080"
   CORS_ALLOWED_ORIGIN_PATTERN: "*"
+  # authz database on the same managed Flexible Server api uses (salon-saas-mix-psql) -
+  # a second logical database (authz), not a second server. Spring Session JDBC uses it
+  # to share HTTP sessions (CSRF token, SecurityContext, the pending /oauth2/authorize
+  # request) across replicas - this deployment runs hpa.maxReplicas up to 3.
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://salon-saas-mix-psql.postgres.database.azure.com:5432/authz?sslmode=require"
+  SPRING_DATASOURCE_USERNAME: "postgres"
+
+# POSTGRES_PASSWORD for the datasource above. azure-postgres-secret → the managed Flexible
+# Server (same secret + same admin password api already uses to reach the same server).
+database:
+  passwordSecretName: azure-postgres-secret
 
 # Sensitive values — override per environment (never commit real values).
 # Rendered into a Kubernetes Secret and injected via envFrom. Empty by default:

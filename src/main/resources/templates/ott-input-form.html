@@ -108,13 +108,20 @@
 <body>
     <div class="card">
         <form id="ott-login-form" method="post" th:action="@{/login/ott}">
-            <h2>Enter your code</h2>
-            <p class="subtitle">We emailed you a 6-digit code. It's valid for a few minutes.</p>
+            <div th:if="${fromMagicLink}">
+                <h2>Sign in</h2>
+                <p class="subtitle">Your magic link is ready. Click below to finish signing in.</p>
+                <input type="hidden" name="token" th:value="${token}">
+            </div>
+            <div th:unless="${fromMagicLink}">
+                <h2>Enter your code</h2>
+                <p class="subtitle">We emailed you a 6-digit code. It's valid for a few minutes.</p>
 
-            <label for="ott-token" class="screenreader">Code</label>
-            <input type="text" id="ott-token" name="token" th:value="${token}" placeholder="000000"
-                   inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
-                   required autofocus>
+                <label for="ott-token" class="screenreader">Code</label>
+                <input type="text" id="ott-token" name="token" th:value="${token}" placeholder="000000"
+                       inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code"
+                       required autofocus>
+            </div>
 
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 

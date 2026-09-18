@@ -49,14 +49,20 @@ spec:
             - secretRef:
                 name: {{ include "auth.fullname" . }}-secret
             - secretRef:
-                name: postgres-secret
-            - secretRef:
                 name: mailjet-secret
           env:
             {{- range $key, $val := .Values.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
+            # azure-postgres-secret is created once per cluster (see
+            # helm/pre-req-manifest/create-secrets.sh in multi-tenant-salon), not by
+            # this chart, so it never creates or overrides it - only reads it.
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.passwordSecretName | default "azure-postgres-secret" }}
+                  key: POSTGRES_PASSWORD
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
