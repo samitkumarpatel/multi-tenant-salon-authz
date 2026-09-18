@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Please sign in</title>
+    <title>Sign in &middot; SalonSaaS</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -14,20 +14,21 @@
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
-            padding-top: 40px;
+            padding: 40px 16px;
         }
         .card {
             background: #fff;
             padding: 40px 36px;
             width: 100%;
-            max-width: 380px;
+            max-width: 400px;
+            border-radius: 8px;
         }
         h2 {
             font-size: 2rem;
             font-weight: 700;
             color: #000;
             line-height: 1.2;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         .screenreader {
             position: absolute;
@@ -54,34 +55,65 @@
             border-radius: 4px;
             font-size: 14px;
             color: #000;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         input[type="text"]:focus-visible {
             outline: 2px solid #235533;
             outline-offset: 0;
             border-color: transparent;
         }
-        button.primary {
-            display: inline-flex;
+
+        .send-label {
+            font-weight: 600;
+            color: #235533;
+            margin-bottom: 8px;
+        }
+        .delivery-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .delivery-btn {
+            display: flex;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 10px;
             width: 100%;
-            min-height: 44px;
-            padding: 10px 14px;
+            min-height: 64px;
+            padding: 12px 14px;
+            font-size: 14px;
             background-color: #2c5f3a;
             color: #fff;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-            border-radius: 4px;
+            border: 2px solid #2c5f3a;
+            border-radius: 6px;
             cursor: pointer;
         }
-        button.primary:hover,
-        button.primary:focus-visible {
-            background-color: #234a2e;
+        .delivery-btn .icon {
+            font-size: 1.3rem;
         }
-        button.primary:focus-visible {
+        .delivery-btn .text {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .delivery-btn .title {
+            font-weight: 700;
+            color: #fff;
+        }
+        .delivery-btn .desc {
+            font-size: 12px;
+            color: #d9e8dd;
+        }
+        .delivery-btn:hover,
+        .delivery-btn:focus-visible {
+            background-color: #234a2e;
+            border-color: #234a2e;
+        }
+        .delivery-btn:focus-visible {
             outline: 2px solid #235533;
             outline-offset: 2px;
         }
@@ -98,24 +130,58 @@
         .error-banner p {
             margin: 0;
         }
+        .notice-banner {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #235533;
+            padding: 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .notice-banner p {
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <div class="card">
         <form id="ott-form" method="post" th:action="@{/ott/generate}">
-            <h2>Request a One-Time Token</h2>
+            <h2>Sign in</h2>
 
             <div class="error-banner" th:if="${param.error != null}">
-                <p th:if="${#strings.equals(param.error[0], 'notify')}">Something went wrong on our end. Please try again in a few minutes.</p>
-                <p th:unless="${#strings.equals(param.error[0], 'notify')}">We couldn't sign you in. Please check your username and try again.</p>
+                <p th:if="${#strings.equals(param.error[0], 'notify')}">We are unable to process your request, please try again later.</p>
+                <p th:unless="${#strings.equals(param.error[0], 'notify')}">We couldn't sign you in. Please check your email and try again.</p>
             </div>
 
-            <label for="ott-username" class="screenreader">Username</label>
-            <input type="text" id="ott-username" name="username" placeholder="Username" required autofocus>
+            <div class="notice-banner" th:if="${param.error == null and param.logout != null}">
+                <p>You have been signed out.</p>
+            </div>
+
+            <label for="ott-username">Email</label>
+            <input type="text" id="ott-username" name="username" placeholder="you@example.com" autocomplete="username" required autofocus>
+
+            <p class="send-label">How should we send it?</p>
+            <div class="delivery-actions">
+                <button class="delivery-btn" type="submit" name="loginType" value="magic-link">
+                    <span class="icon" aria-hidden="true">&#128279;</span>
+                    <span class="text">
+                        <span class="title">Send a magic link</span>
+                        <span class="desc">One click to sign in</span>
+                    </span>
+                </button>
+
+                <button class="delivery-btn" type="submit" name="loginType" value="short-token">
+                    <span class="icon" aria-hidden="true">&#128290;</span>
+                    <span class="text">
+                        <span class="title">Send the code</span>
+                        <span class="desc">Type it in yourself</span>
+                    </span>
+                </button>
+            </div>
 
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-
-            <button class="primary" type="submit">Send Token</button>
         </form>
     </div>
 </body>

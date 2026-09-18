@@ -21,6 +21,7 @@
             padding: 40px 36px;
             width: 100%;
             max-width: 380px;
+            border-radius: 8px;
         }
         h2 {
             font-size: 2rem;
@@ -41,32 +42,17 @@
         .info-banner p {
             margin: 0;
         }
-        .info-banner .ott-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 12px;
-            padding: 10px 14px;
-            min-height: 44px;
-            background-color: #2c5f3a;
-            color: #fff;
-            font-size: 14px;
-            font-weight: 600;
+        .back-link {
+            display: block;
+            margin-top: 16px;
+            text-align: center;
+            color: #2c5f3a;
+            font-size: 13px;
             text-decoration: none;
-            border-radius: 4px;
         }
-        .info-banner .ott-link:hover,
-        .info-banner .ott-link:focus-visible {
-            background-color: #234a2e;
+        .back-link:hover,
+        .back-link:focus-visible {
             text-decoration: underline;
-        }
-        .info-banner .ott-link:focus-visible {
-            outline: 2px solid #235533;
-            outline-offset: 2px;
-        }
-        .info-banner .ott-divider {
-            margin-top: 12px;
-            font-weight: 600;
         }
     </style>
 </head>
@@ -74,15 +60,9 @@
     <div class="card">
         <h2>Check your email</h2>
         <div class="info-banner">
-            <p>We emailed you a one-time login code. Enter it here in this tab to
-               finish signing in &mdash; that keeps you in the same browser session
-               you started from.</p>
-            <a class="ott-link" href="/ott-login/ask-ott">Enter your code &rarr;</a>
-            <!--/* Disabled with the magic-link email (see NotificationService):
-            <p class="ott-divider">The email also has a sign-in link, but it only
-               works if opened in this same browser.</p>
-            */-->
+            <p>We emailed you a magic sign-in link &mdash; click it to finish signing in.</p>
         </div>
+        <a class="back-link" href="/ott/login">&larr; Back to sign in</a>
     </div>
 </body>
 </html>

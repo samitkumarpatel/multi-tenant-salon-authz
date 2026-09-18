@@ -18,6 +18,18 @@ spring:
       sender: "noreply@salonsaas.org"
       api-key: ${MAILJET_API_KEY:asfa}
       api-secret: ${MAILJET_API_SECRET:sfas}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/authz}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  session:
+    store-type: jdbc
+    jdbc:
+      # Flyway owns the SPRING_SESSION tables (db/migration/V1__...). Spring
+      # Session's own initializer re-runs a plain, non-idempotent CREATE TABLE
+      # on every boot when set to "always" - fine the first time, then crashes
+      # the next restart once the tables already exist.
+      initialize-schema: never
   security:
     oauth2:
       authorizationserver:
