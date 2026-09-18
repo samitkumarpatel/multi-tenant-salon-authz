@@ -53,7 +53,7 @@
             min-height: 44px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 16px;
             color: #000;
             margin-bottom: 24px;
         }
@@ -63,11 +63,6 @@
             border-color: transparent;
         }
 
-        .send-label {
-            font-weight: 600;
-            color: #235533;
-            margin-bottom: 8px;
-        }
         .delivery-actions {
             display: grid;
             grid-template-columns: 1fr;
@@ -94,21 +89,11 @@
         .delivery-btn .icon {
             font-size: 1.3rem;
         }
-        .delivery-btn .text {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
         .delivery-btn .title {
             font-weight: 700;
             color: #fff;
         }
-        .delivery-btn .desc {
-            font-size: 12px;
-            color: #d9e8dd;
-        }
-        .delivery-btn:hover,
+        .delivery-btn:enabled:hover,
         .delivery-btn:focus-visible {
             background-color: #234a2e;
             border-color: #234a2e;
@@ -116,6 +101,10 @@
         .delivery-btn:focus-visible {
             outline: 2px solid #235533;
             outline-offset: 2px;
+        }
+        .delivery-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .error-banner {
             background-color: #f8d7da;
@@ -162,27 +151,36 @@
             <label for="ott-username">Email</label>
             <input type="text" id="ott-username" name="username" placeholder="you@example.com" autocomplete="username" required autofocus>
 
-            <p class="send-label">How should we send it?</p>
             <div class="delivery-actions">
-                <button class="delivery-btn" type="submit" name="loginType" value="magic-link">
+                <button class="delivery-btn" type="submit" name="loginType" value="magic-link" disabled>
                     <span class="icon" aria-hidden="true">&#128279;</span>
-                    <span class="text">
-                        <span class="title">Send a magic link</span>
-                        <span class="desc">One click to sign in</span>
-                    </span>
+                    <span class="title">Send a magic link</span>
                 </button>
 
-                <button class="delivery-btn" type="submit" name="loginType" value="short-token">
+                <button class="delivery-btn" type="submit" name="loginType" value="short-token" disabled>
                     <span class="icon" aria-hidden="true">&#128290;</span>
-                    <span class="text">
-                        <span class="title">Send the code</span>
-                        <span class="desc">Type it in yourself</span>
-                    </span>
+                    <span class="title">Send the code</span>
                 </button>
             </div>
 
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         </form>
     </div>
+    <script>
+        const usernameInput = document.getElementById('ott-username');
+        const deliveryButtons = document.querySelectorAll('.delivery-btn');
+
+        function updateDeliveryButtons() {
+            const isEmpty = usernameInput.value.trim().length === 0;
+            deliveryButtons.forEach(button => {
+                button.disabled = isEmpty;
+            });
+        }
+
+        usernameInput.addEventListener('input', updateDeliveryButtons);
+        usernameInput.addEventListener('change', updateDeliveryButtons);
+        window.addEventListener('pageshow', updateDeliveryButtons);
+        updateDeliveryButtons();
+    </script>
 </body>
 </html>

@@ -58,7 +58,7 @@
             min-height: 44px;
             border: 1px solid #ccc;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 16px;
             color: #000;
             margin-bottom: 20px;
         }
@@ -71,25 +71,30 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 10px;
             width: 100%;
-            min-height: 44px;
-            padding: 10px 14px;
+            min-height: 64px;
+            padding: 12px 14px;
             background-color: #2c5f3a;
             color: #fff;
             font-size: 14px;
-            font-weight: 600;
-            border: none;
-            border-radius: 4px;
+            font-weight: 700;
+            border: 2px solid #2c5f3a;
+            border-radius: 6px;
             cursor: pointer;
         }
-        button.primary:hover,
+        button.primary:enabled:hover,
         button.primary:focus-visible {
             background-color: #234a2e;
+            border-color: #234a2e;
         }
         button.primary:focus-visible {
             outline: 2px solid #235533;
             outline-offset: 2px;
+        }
+        button.primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .back-link {
             display: block;
