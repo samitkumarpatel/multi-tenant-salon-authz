@@ -115,6 +115,22 @@ spring:
                 - "profile"
             token:
               access-token-time-to-live: 30m
+          salon-dashboard:
+            registration:
+              client-id: "salon-dashboard"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+              redirect-uris:
+                - "https://dashboard.salonsaas.org/login"
+              post-logout-redirect-uris:
+                - "https://dashboard.salonsaas.org/login"
+              scopes:
+                - "openid"
+                - "profile"
+            token:
+              access-token-time-to-live: 30m
   threads:
     virtual:
       enabled: true
