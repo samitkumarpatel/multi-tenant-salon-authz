@@ -6,6 +6,9 @@ import net.samitkumar.multi_tenant_salon_authz.salon.SalonUser;
 import net.samitkumar.multi_tenant_salon_authz.salon.SalonUserClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -105,7 +109,8 @@ class MultiTenantSalonAuthzApplicationTests {
     @Test
     void ottSentPageIsPublic() throws Exception {
         mockMvc.perform(get("/ott/sent"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("If an account exists for this email")));
     }
 
     // --- Session persistence (Spring Session JDBC, Flyway-managed schema) ---
@@ -149,6 +154,7 @@ class MultiTenantSalonAuthzApplicationTests {
     void loginOttPageIsPublicAndRendersTokenForm() throws Exception {
         mockMvc.perform(get("/ott/input"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("If an account exists for this email")))
                 .andExpect(content().contentTypeCompatibleWith("text/html"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/login/ott")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("_csrf")))
@@ -220,32 +226,65 @@ class MultiTenantSalonAuthzApplicationTests {
                 .andExpect(redirectedUrl("/ott/login?error"));
     }
 
-    @Test
-    void generateForUnregisteredEmailStillRedirectsAsIfSentToPreventUserEnumeration() throws Exception {
+    @ParameterizedTest
+    @CsvSource({"magic-link,/ott/sent", "short-token,/ott/input"})
+    void generateForUnregisteredEmailStillRedirectsAsIfSentToPreventUserEnumeration(
+            String loginType, String confirmationPage) throws Exception {
         when(salonUserClient.getUserIdentity("nobody@salon.com")).thenReturn(Optional.empty());
 
         mockMvc.perform(post("/ott/generate")
                         .with(csrf())
                         .param("username", "nobody@salon.com")
-                        .param("loginType", "magic-link"))
+                        .param("loginType", loginType))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/ott/sent"));
+                .andExpect(redirectedUrl(confirmationPage));
+
+        mockMvc.perform(get(confirmationPage))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("If an account exists for this email")));
 
         verify(notificationService, never()).send(eq("nobody@salon.com"), org.mockito.ArgumentMatchers.any());
     }
 
-    @Test
-    void generateRedirectsToGenericErrorWhenIdentityLookupFails() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"magic-link", "short-token"})
+    void generateRedirectsToGenericErrorWhenIdentityLookupFails(String loginType) throws Exception {
         when(salonUserClient.getUserIdentity("user@salon.com")).thenThrow(new RuntimeException("identity service unavailable"));
 
         mockMvc.perform(post("/ott/generate")
                         .with(csrf())
                         .param("username", "user@salon.com")
-                        .param("loginType", "short-token"))
+                        .param("loginType", loginType))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/ott/login?error=notify"));
 
         verify(notificationService, never()).send(eq("user@salon.com"), org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(get("/ott/login").param("error", "notify"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("We are unable to process your request")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("identity service unavailable"))));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"magic-link", "short-token"})
+    void generateRedirectsToGenericErrorWhenNotificationFails(String loginType) throws Exception {
+        when(salonUserClient.getUserIdentity("user@salon.com")).thenReturn(Optional.of(TEST_USER));
+        doThrow(new RuntimeException("mail provider unavailable"))
+                .when(notificationService).send(eq("user@salon.com"), org.mockito.ArgumentMatchers.any());
+
+        mockMvc.perform(post("/ott/generate")
+                        .with(csrf())
+                        .param("username", "user@salon.com")
+                        .param("loginType", loginType))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/ott/login?error=notify"));
+
+        mockMvc.perform(get("/ott/login").param("error", "notify"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"alert\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("We are unable to process your request")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("mail provider unavailable"))));
     }
 
     // --- Logout ---
