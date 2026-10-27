@@ -50,6 +50,10 @@ spec:
                 name: {{ include "auth.fullname" . }}-secret
             - secretRef:
                 name: mailjet-secret
+            # Shared with the api (created by multi-tenant-salon's create-secrets.sh): the key for /internal/clients.
+            - secretRef:
+                name: client-management-secret
+                optional: true
           env:
             {{- range $key, $val := .Values.env }}
             - name: {{ $key }}

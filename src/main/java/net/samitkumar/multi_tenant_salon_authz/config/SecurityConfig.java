@@ -2,6 +2,7 @@ package net.samitkumar.multi_tenant_salon_authz.config;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.samitkumar.multi_tenant_salon_authz.client.ApiClients;
 import net.samitkumar.multi_tenant_salon_authz.notification.NotificationService;
 import net.samitkumar.multi_tenant_salon_authz.ott.OTTService;
 import net.samitkumar.multi_tenant_salon_authz.salon.SalonUser;
@@ -15,6 +16,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
@@ -39,6 +41,13 @@ class SecurityConfig {
     OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
             if (!context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) return;
+            // A salon's API client: tie the token to that salon, taken from the stored client and never from the
+            // request. These tokens deliberately carry no `roles` or `salons`, which the API trusts for people.
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                Object salonId = context.getRegisteredClient().getClientSettings().getSettings().get(ApiClients.SALON_ID_SETTING);
+                if (salonId instanceof String id) context.getClaims().claim("salon_id", id).claim("client_type", "salon-api");
+                return;
+            }
             if (!(context.getPrincipal().getPrincipal() instanceof SalonUser user)) return;
 
             context.getClaims()

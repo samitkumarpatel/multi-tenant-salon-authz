@@ -14,6 +14,12 @@ spring:
     name: multi-tenant-salon-authz
     identity-service-url: ${IDENTITY_SERVICE_URL:http://localhost:8080}
     cors-allowed-origin-pattern: ${CORS_ALLOWED_ORIGIN_PATTERN:*}
+    # Salon owners' API clients (client_credentials). The salon API manages them through /internal/clients with this
+    # shared key; empty means the endpoints reject everything.
+    client-management:
+      api-key: ${CLIENT_MANAGEMENT_API_KEY:}
+      max-clients-per-salon: 5
+      token-ttl: PT15M
     mailjet:
       sender: "noreply@salonsaas.org"
       api-key: ${MAILJET_API_KEY:asfa}
