@@ -12,7 +12,7 @@
             <span th:replace="~{fragments/ott-theme :: lock-icon}"></span>
             <div>
                 <h1 id="sign-in-title">Sign in to your salon</h1>
-                <p class="subtitle">Enter your email to receive a sign-in link or code.</p>
+                <p class="subtitle">Enter your email to receive a secure sign-in link.</p>
             </div>
         </header>
         <form class="card-body" id="ott-form" method="post" th:action="@{/ott/generate}">
@@ -33,11 +33,11 @@
 
             <div class="delivery-actions">
                 <button class="delivery-btn" type="submit" name="loginType" value="magic-link" disabled>
-                    Send a magic link
+                    Email me a sign-in link
                 </button>
 
-                <button class="delivery-btn" type="submit" name="loginType" value="short-token" disabled>
-                    Send a code
+                <button class="delivery-btn secondary" type="submit" name="loginType" value="short-token" disabled>
+                    Email me a code instead
                 </button>
             </div>
 
@@ -45,19 +45,50 @@
         </form>
     </main>
     <script>
+        const form = document.getElementById('ott-form');
         const usernameInput = document.getElementById('ott-username');
         const deliveryButtons = document.querySelectorAll('.delivery-btn');
+        const buttonLabels = Array.from(deliveryButtons, button => button.textContent.trim());
+        let isSubmitting = false;
 
         function updateDeliveryButtons() {
             const isValid = usernameInput.validity.valid;
             deliveryButtons.forEach(button => {
-                button.disabled = !isValid;
+                button.disabled = isSubmitting || !isValid;
             });
         }
 
+        form.addEventListener('submit', event => {
+            if (isSubmitting) {
+                event.preventDefault();
+                return;
+            }
+
+            const submitter = event.submitter || deliveryButtons[0];
+            // Disabled buttons are excluded from form data, so preserve the selected delivery method.
+            const deliveryMethod = document.createElement('input');
+            deliveryMethod.type = 'hidden';
+            deliveryMethod.name = 'loginType';
+            deliveryMethod.value = submitter.value;
+            form.appendChild(deliveryMethod);
+
+            isSubmitting = true;
+            form.setAttribute('aria-busy', 'true');
+            submitter.textContent = submitter.value === 'short-token' ? 'Sending code…' : 'Sending link…';
+            updateDeliveryButtons();
+        });
+
         usernameInput.addEventListener('input', updateDeliveryButtons);
         usernameInput.addEventListener('change', updateDeliveryButtons);
-        window.addEventListener('pageshow', updateDeliveryButtons);
+        window.addEventListener('pageshow', () => {
+            isSubmitting = false;
+            form.removeAttribute('aria-busy');
+            form.querySelectorAll('input[name="loginType"]').forEach(input => input.remove());
+            deliveryButtons.forEach((button, index) => {
+                button.textContent = buttonLabels[index];
+            });
+            updateDeliveryButtons();
+        });
         updateDeliveryButtons();
     </script>
 </body>
