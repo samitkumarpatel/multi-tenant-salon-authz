@@ -2,10 +2,13 @@ package net.samitkumar.multi_tenant_salon_authz.notification;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.samitkumar.multi_tenant_salon_authz.config.AuthLanguages;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.util.HtmlUtils;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -13,78 +16,31 @@ import java.util.Map;
 @Slf4j
 public class NotificationService {
     final MailJetClient mailJetClient;
-    @Value("${spring.application.mailjet.sender}")
-    String sender;
+    final MessageSource messages;
+    @Value("${spring.application.mailjet.sender}") String sender;
 
     public void send(String to, Map<String, String> metadata) {
-        log.info("Sending Mailjet notification to {} with metadata {}", to, metadata);
-        var mailFrom = new MailjetEmail(sender, "SalonSaaS");
-        var tto = new MailjetEmail(to, to);
-        var token = metadata.get("token");
-        var tokenLink = metadata.get("tokenLink");
-
-        String textMessage;
-        String htmlMessage;
-        if (tokenLink != null) {
-            // Note: the link opens whatever browser/tab handles the mail client's click, which may
-            // differ from the tab that started the OAuth2 + PKCE flow. If that tab's client keeps its
-            // code_verifier in sessionStorage, the link may land on a "sign-in expired" page there —
-            // the code below is kept as a fallback for that case.
-            textMessage = """
-                    Welcome to SalonSaaS!
-
-                    Click the link below to sign in (copy and paste into your browser if it does not open):
-                    %s
-
-                    This link is valid for a few minutes and can be used once.
-
-                    If you did not request this, please report it to admin@salonsaas.org
-                    """.formatted(tokenLink);
-
-            htmlMessage = """
-                    <p>Hi,</p>
-                    <p>Click below to sign in to <strong>SalonSaaS</strong>:</p>
-                    <p><a href="%s">%s</a></p>
-                    <p>This link is valid for a few minutes and can be used once.</p>
-                    <p><small>If you did not request this, please contact
-                       <a href="mailto:admin@salonsaas.org">admin@salonsaas.org</a></small></p>
-                    """.formatted(tokenLink, tokenLink);
-        } else {
-            textMessage = """
-                    Welcome to SalonSaaS!
-
-                    Your one-time login code is:
-
-                        %s
-
-                    Go back to the tab where you started signing in and enter this code.
-                    It is valid for a few minutes and can be used once.
-
-                    If you did not request this, please report it to admin@salonsaas.org
-                    """.formatted(token);
-
-            htmlMessage = """
-                    <p>Hi,</p>
-                    <p>Your one-time login code for <strong>SalonSaaS</strong> is:</p>
-                    <h2 style="font-size:28px;letter-spacing:4px;margin:12px 0">%s</h2>
-                    <p>Go back to the tab where you started signing in and enter this code.
-                       It is valid for a few minutes and can be used once.</p>
-                    <p><small>If you did not request this, please contact
-                       <a href="mailto:admin@salonsaas.org">admin@salonsaas.org</a></small></p>
-                    """.formatted(token);
-        }
-
-        var request = new MailjetRequest(List.of(
-                new MailjetMessage(
-                        mailFrom,
-                        List.of(tto),
-                        "SalonSaaS OTT",
-                        textMessage,
-                        htmlMessage
-                )
-        ));
-
-        var result = mailJetClient.send(request);
-        log.info("Mailjet send result: {}", result);
+        var locale = Locale.forLanguageTag(AuthLanguages.normalize(metadata.get("language")).orElse("en"));
+        boolean link = metadata.get("tokenLink") != null;
+        String instruction = message(link ? "email.link.instruction" : "email.code.instruction", locale);
+        String validity = message(link ? "email.link.validity" : "email.code.validity", locale);
+        String credential = metadata.get(link ? "tokenLink" : "token");
+        String help = message("email.help", locale);
+        String returnToTab = link ? "" : message("email.return", locale);
+        String text = message("email.welcome", locale) + "\n\n" + instruction + "\n\n" + credential
+                + "\n\n" + returnToTab + "\n" + validity + "\n\n" + help + " admin@salonsaas.org";
+        String escaped = HtmlUtils.htmlEscape(credential);
+        String html = "<html lang=\"" + locale.getLanguage() + "\"><body><p>" + HtmlUtils.htmlEscape(message("email.greeting", locale))
+                + "</p><p>" + HtmlUtils.htmlEscape(instruction) + "</p>"
+                + (link ? "<p><a href=\"" + escaped + "\">" + escaped + "</a></p>"
+                        : "<h2 style=\"font-size:28px;letter-spacing:4px;margin:12px 0\">" + escaped + "</h2><p>" + HtmlUtils.htmlEscape(returnToTab) + "</p>")
+                + "<p>" + HtmlUtils.htmlEscape(validity) + "</p><p><small>" + HtmlUtils.htmlEscape(help)
+                + " <a href=\"mailto:admin@salonsaas.org\">admin@salonsaas.org</a></small></p></body></html>";
+        var request = new MailjetRequest(List.of(new MailjetMessage(new MailjetEmail(sender, "SalonSaaS"),
+                List.of(new MailjetEmail(to, to)), message(link ? "email.link.subject" : "email.code.subject", locale), text, html)));
+        // Never log the credential or the metadata containing it.
+        log.info("Sending sign-in notification in {}", locale.getLanguage());
+        mailJetClient.send(request);
     }
+    private String message(String key, Locale locale) { return messages.getMessage(key, null, locale); }
 }

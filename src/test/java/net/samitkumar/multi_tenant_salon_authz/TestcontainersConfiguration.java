@@ -53,12 +53,12 @@ class TestcontainersConfiguration {
 
     @Bean
     @Primary
-    NotificationService inMemoryNotificationService() {
+    NotificationService inMemoryNotificationService(org.springframework.context.MessageSource messages) {
         // mailJetClient is never used below — send() is fully overridden — so null is safe here.
-        return new NotificationService(null) {
+        return new NotificationService(null, messages) {
             @Override
             public void send(String to, Map<String, String> metadata) {
-                System.out.println("[test] Skipping real Mailjet call — would send to %s with metadata %s".formatted(to, metadata));
+                System.out.println("[test] Skipping real Mailjet sign-in notification");
             }
         };
     }

@@ -20,6 +20,9 @@ class OTTController {
         return "ott-input-form";
     }
 
+    @GetMapping("/logout")
+    String logout() { return "ott-logout"; }
+
     @GetMapping("/ott/sent")
     String sent() {
         return "ott-info";

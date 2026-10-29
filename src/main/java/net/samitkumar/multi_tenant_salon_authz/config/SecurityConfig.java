@@ -114,19 +114,22 @@ class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/**", "/ott/login", "/ott/input", "/ott/sent", "/logout").permitAll()
+                        .requestMatchers("/actuator/**", "/ott/login", "/ott/input", "/ott/sent", "/logout", "/error").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
                 .oidcLogout(Customizer.withDefaults())
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/ott/login?logout")
+                        .logoutSuccessHandler((request, response, authentication) ->
+                                response.sendRedirect(AuthLanguages.withLanguage("/ott/login?logout", request)))
                 )
                 .oneTimeTokenLogin(ott ->
                         ott
                                 .loginPage("/ott/login")
                                 .loginProcessingUrl("/login/ott")
                                 .showDefaultSubmitPage(false)
+                                .authenticationFailureHandler((request, response, exception) ->
+                                        response.sendRedirect(AuthLanguages.withLanguage("/ott/login?error", request)))
                                 .tokenGenerationSuccessHandler((request, response, oneTimeToken) -> {
                                     boolean magicLink = "magic-link".equals(request.getParameter("loginType"));
 
@@ -135,7 +138,7 @@ class SecurityConfig {
                                         user = salonUserClient.getUserIdentity(oneTimeToken.getUsername());
                                     } catch (Exception e) {
                                         log.error("Unable to look up user identity for one-time token request", e);
-                                        response.sendRedirect("/ott/login?error=notify");
+                                        response.sendRedirect(AuthLanguages.withLanguage("/ott/login?error=notify", request));
                                         return;
                                     }
 
@@ -147,6 +150,7 @@ class SecurityConfig {
                                         user.ifPresent(u -> {
                                             var metadata = new HashMap<String, String>();
                                             metadata.put("token", oneTimeToken.getTokenValue());
+                                            metadata.put("language", AuthLanguages.resolve(request).getLanguage());
                                             if (magicLink) {
                                                 String tokenLink = UriComponentsBuilder.fromUriString(request.getRequestURL().toString())
                                                         .replacePath(request.getContextPath())
@@ -154,20 +158,22 @@ class SecurityConfig {
                                                         .fragment(null)
                                                         .path("/ott/input")
                                                         .queryParam("token", oneTimeToken.getTokenValue())
+                                                        .queryParam("lang", AuthLanguages.resolve(request).getLanguage())
                                                         .toUriString();
                                                 metadata.put("tokenLink", tokenLink);
                                             }
                                             notificationService.send(u.getUsername(), metadata);
                                         });
-                                        response.sendRedirect(magicLink ? "/ott/sent" : "/ott/input");
+                                        response.sendRedirect(AuthLanguages.withLanguage(magicLink ? "/ott/sent" : "/ott/input", request));
                                     } catch (Exception e) {
                                         log.error("Error sending notification for one-time token", e);
-                                        response.sendRedirect("/ott/login?error=notify");
+                                        response.sendRedirect(AuthLanguages.withLanguage("/ott/login?error=notify", request));
                                     }
                                 })
                 )
                 .oauth2AuthorizationServer(authorizationServer ->
-                        authorizationServer.oidc(Customizer.withDefaults())
+                        authorizationServer.authorizationEndpoint(endpoint -> endpoint.consentPage("/oauth2/consent"))
+                                .oidc(Customizer.withDefaults())
                 );
 
         return http.build();

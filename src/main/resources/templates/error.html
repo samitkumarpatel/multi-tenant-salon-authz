@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title th:text="#{error.title}">SalonSaaS</title>
+    <style th:replace="~{fragments/ott-theme :: styles}"></style>
+</head>
+<body>
+<main class="card" aria-labelledby="page-title">
+    <div th:replace="~{fragments/ott-theme :: language-selector}"></div>
+
+    <header class="card-header">
+        <span th:replace="~{fragments/ott-theme :: lock-icon}"></span>
+        <div><h1 id="page-title" th:text="${status == 404} ? #{error.notfound.heading} : #{error.heading}">Something went wrong</h1>
+            <p class="subtitle" th:text="${status == 404} ? #{error.notfound.message} : #{error.message}">Please try again.</p></div>
+    </header>
+    <div class="card-body"><a class="back-link" th:href="@{/ott/login(lang=${currentLanguage})}" th:text="#{login.back}">Back to sign in</a></div>
+</main>
+</body>
+</html>
