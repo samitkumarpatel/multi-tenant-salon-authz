@@ -106,3 +106,17 @@ Server verifies SHA256(code_verifier) == code_challenge from Step 1. Returns:
     "expires_in": 1800
 }
 ```
+
+## Internationalization
+
+Login, code entry, magic-link confirmation, email confirmation, logout, consent and error pages, plus login emails, are translated into `en`, `da`, `sv`, `nb`, `fr` and `de`. Catalogs live in `src/main/resources/messages*.properties` (UTF-8).
+
+Locale is resolved in this order:
+
+1. `lang` query parameter
+2. OIDC `ui_locales` parameter
+3. language preference cookie
+4. browser `Accept-Language`
+5. English
+
+Norwegian aliases (`no`, `nn`, `nb-NO`) normalize to `nb`. The selected language is kept across security redirects and magic links. To add a language, add a `messages_<code>.properties` with the same keys and register it in `AuthLanguages`.

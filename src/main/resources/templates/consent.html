@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <title th:text="#{consent.title}">SalonSaaS</title>
+    <style th:replace="~{fragments/ott-theme :: styles}"></style>
+</head>
+<body>
+<main class="card" aria-labelledby="page-title">
+    <div th:replace="~{fragments/ott-theme :: language-selector}"></div>
+
+    <header class="card-header">
+        <span th:replace="~{fragments/ott-theme :: lock-icon}"></span>
+        <div><h1 id="page-title" th:text="#{consent.heading}">Allow access?</h1><p class="subtitle" th:text="#{consent.description(${clientName})}">This application would like to access your account.</p></div>
+    </header>
+    <div class="card-body">
+        <p th:text="#{consent.account(${accountName})}">Signed in</p>
+        <form method="post" th:action="@{/oauth2/authorize}">
+            <input type="hidden" name="client_id" th:value="${clientId}">
+            <input type="hidden" name="state" th:value="${state}">
+            <input type="hidden" name="lang" th:value="${currentLanguage}">
+            <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="scope-option" th:each="permission, row : ${pendingScopes}">
+                <input type="checkbox" name="scope" th:id="'scope-' + ${row.index}" th:value="${permission.value}">
+                <label th:for="'scope-' + ${row.index}" th:text="${permission.label}">Permission</label>
+            </div>
+            <p class="support-text" th:if="${!previousScopes.isEmpty()}" th:text="#{consent.previous}">Previously approved</p>
+            <p class="support-text" th:each="permission : ${previousScopes}" th:text="${permission.label}">Permission</p>
+            <p class="support-text" th:text="#{consent.note}">You can choose which permissions to allow.</p>
+            <button class="primary" type="submit" th:text="#{consent.approve}">Allow selected permissions</button>
+        </form>
+        <form class="secondary-form" method="post" th:action="@{/oauth2/authorize}">
+            <input type="hidden" name="client_id" th:value="${clientId}">
+            <input type="hidden" name="state" th:value="${state}">
+            <input type="hidden" name="lang" th:value="${currentLanguage}">
+            <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button class="delivery-btn secondary" type="submit" th:text="#{consent.cancel}">Cancel</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

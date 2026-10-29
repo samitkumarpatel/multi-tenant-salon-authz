@@ -132,14 +132,14 @@ class MultiTenantSalonAuthzApplicationTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"short-token\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"magic-link\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("_csrf")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn&#39;t sign you in"))));
     }
 
     @Test
     void loginPageShowsErrorMessageWhenErrorParamPresent() throws Exception {
         mockMvc.perform(get("/ott/login").param("error", ""))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("We couldn't sign you in")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("We couldn&#39;t sign you in")));
     }
 
     @Test
@@ -147,7 +147,7 @@ class MultiTenantSalonAuthzApplicationTests {
         mockMvc.perform(get("/ott/login").param("error", "notify"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("We are unable to process your request")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn't sign you in"))));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("We couldn&#39;t sign you in"))));
     }
 
     @Test

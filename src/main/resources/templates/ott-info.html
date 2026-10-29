@@ -1,22 +1,25 @@
 <!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" th:lang="${#locale.toLanguageTag()}" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Check your email &middot; SalonSaaS</title>
+    <title th:text="#{sent.title}">Check your email · SalonSaaS</title>
     <style th:replace="~{fragments/ott-theme :: styles}"></style>
 </head>
 <body>
     <main class="card" aria-labelledby="sign-in-title">
+        <div th:replace="~{fragments/ott-theme :: language-selector}"></div>
         <header class="card-header">
             <span th:replace="~{fragments/ott-theme :: lock-icon}"></span>
             <div>
-                <h1 id="sign-in-title">Check your email</h1>
-                <p class="subtitle">If an account exists for this email, you'll receive a sign-in link shortly.</p>
+                <h1 id="sign-in-title" th:text="#{sent.heading}">Check your email</h1>
+                <p class="subtitle" th:text="#{sent.subtitle}">If an account exists for this email, you'll receive a sign-in link shortly.</p>
             </div>
         </header>
         <div class="card-body">
-            <a class="back-link" href="/ott/login" th:href="@{/ott/login}">&larr; Back to sign in</a>
+            <a class="back-link" href="/ott/login" th:href="@{/ott/login(lang=${currentLanguage})}" th:text="#{login.back}">&larr; Back to sign in</a>
         </div>
     </main>
 </body>

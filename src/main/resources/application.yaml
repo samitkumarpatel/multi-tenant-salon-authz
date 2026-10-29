@@ -10,6 +10,10 @@ logging:
     org.springframework.security: ${LOGGING_LEVEL:INFO}
 
 spring:
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   application:
     name: multi-tenant-salon-authz
     identity-service-url: ${IDENTITY_SERVICE_URL:http://localhost:8080}

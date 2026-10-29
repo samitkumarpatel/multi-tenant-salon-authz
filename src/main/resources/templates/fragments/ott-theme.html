@@ -23,6 +23,17 @@
             border-radius: 12px;
             box-shadow: 0 1px 2px rgb(23 43 70 / 12%);
         }
+        .language-bar { padding: 12px 24px 0; }
+        .language-form { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+        .language-form label { margin: 0; font-size: 12px; color: #64748b; }
+        .language-form select { min-height: 40px; max-width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #172b46; font: inherit; cursor: pointer; }
+        .language-form select:focus-visible { outline: 2px solid #567330; outline-offset: 2px; }
+        .language-form button { padding: 8px; font: inherit; cursor: pointer; }
+        .scope-option { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; line-height: 1.6; }
+        .scope-option input { margin-top: 4px; }
+        .scope-option label { font-weight: 400; margin: 0; overflow-wrap: anywhere; }
+        .secondary-form { margin-top: 10px; }
+        .support-text { margin-top: 16px; color: #64748b; font-size: 12px; line-height: 1.6; }
         .card-header {
             display: flex;
             align-items: flex-start;
@@ -169,6 +180,16 @@
     </style>
 </head>
 <body>
+    <div th:fragment="language-selector" class="language-bar">
+        <form class="language-form" method="get" th:action="${languagePath}">
+            <input th:each="parameter : ${languageParameters}" type="hidden" th:name="${parameter.name}" th:value="${parameter.value}">
+            <label for="auth-language" th:text="#{language.label}">Language</label>
+            <select id="auth-language" name="lang" onchange="this.form.requestSubmit()">
+                <option th:each="language : ${supportedLanguages}" th:value="${language.code}" th:selected="${language.code == currentLanguage}" th:text="${language.name}">English</option>
+            </select>
+            <noscript><button type="submit" th:text="#{language.apply}">Apply</button></noscript>
+        </form>
+    </div>
             <span th:fragment="lock-icon" class="lock-icon" aria-hidden="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
                     <rect x="4" y="10" width="16" height="11" rx="2"/>
